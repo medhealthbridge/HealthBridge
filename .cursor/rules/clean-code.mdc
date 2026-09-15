@@ -1,0 +1,15 @@
+---
+description: DRY, schema-derived types, consistent errors, no speculative abstractions
+alwaysApply: true
+---
+
+# Clean code
+
+- Extract shared validation, query shapes, and UI on the second use — not before.
+- Types from Zod (`z.infer<typeof schema>`) or ORM types. Never duplicate a parallel interface.
+- Validate at the Server Action / Route Handler boundary. Services assume validated input.
+- Prefer named service functions over inline queries in components.
+- No dead code, commented-out blocks, or speculative layers.
+- One error style everywhere (typed throws **or** Result) — do not mix in sibling functions.
+- TypeScript strict: no new `any`.
+- Tests: unit tests for services; integration for actions/handlers; Playwright for critical e2e.

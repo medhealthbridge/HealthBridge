@@ -1,0 +1,26 @@
+---
+description: Target source layout for App Router, server, and shared code
+alwaysApply: true
+---
+
+# Layout
+
+The create-next-app tree currently uses root `app/`. New fullstack code should grow toward:
+
+```
+src/
+  app/                 # routes; _components/ colocated per route
+  server/
+    actions/           # Server Actions by domain
+    db/client.ts
+    db/schema.ts
+    services/          # framework-agnostic logic
+    auth.ts
+  lib/                 # Zod schemas, constants, utils
+  components/          # shared UI
+  types/
+```
+
+Prefer native Next.js (Server Actions, RSC, `revalidatePath`/`revalidateTag`) over new libraries unless native cannot do the job.
+
+Do **not** follow `docs/architecture.md` Route Handler + TanStack Query defaults; that doc is superseded by these rules.

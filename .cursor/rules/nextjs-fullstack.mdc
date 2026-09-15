@@ -1,0 +1,27 @@
+---
+description: HealthBridge is a single Next.js app — no separate backend
+alwaysApply: true
+---
+
+# One Next.js app
+
+Next.js is the backend. Never add NestJS, Express, Fastify, Hono, or a separate API service.
+
+- Mutations: Server Actions by default (`src/server/actions/`).
+- `app/api/*` only for webhooks, OAuth callbacks, or non-Next clients.
+- Thin actions/handlers: validate with Zod, call a service, shape the response.
+- Business logic: plain TypeScript in `src/server/services/` — no Next.js imports.
+- Data: Server Components. `'use client'` only on the smallest interactive leaf.
+- Never mark a whole page `'use client'` for one button.
+
+## Workflow
+
+1. Schema/migration first
+2. Zod contract (shared with the form)
+3. Service → action/handler → UI
+4. `revalidatePath` / `revalidateTag` on every mutation
+5. Deduplicate before done
+
+Auth checks live in `src/server/auth.ts`. Middleware is coarse route protection only.
+ORM: Prisma if already in use; otherwise PostgreSQL + Drizzle. One client in `src/server/db/client.ts`.
+Auth library: keep **better-auth** (already in the repo); do not switch to Auth.js/Lucia.
