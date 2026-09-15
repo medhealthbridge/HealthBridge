@@ -1,0 +1,34 @@
+---
+description: UI/UX Pro Max — design, build, and review UI with the project skill
+alwaysApply: true
+---
+
+# UI/UX
+
+When designing, building, or reviewing UI, read `.cursor/skills/ui-ux-pro-max/SKILL.md` and run the search CLI **before** implementing.
+
+```bash
+python .cursor/skills/ui-ux-pro-max/scripts/search.py "healthcare SaaS dashboard clinical" --design-system -p "HealthBridge"
+python .cursor/skills/ui-ux-pro-max/scripts/search.py "accessibility animation form" --domain ux
+python .cursor/skills/ui-ux-pro-max/scripts/search.py "layout responsive form" --stack nextjs
+python .cursor/skills/ui-ux-pro-max/scripts/search.py "form table dialog" --stack shadcn
+```
+
+Default stack is **nextjs + shadcn**. Product is **healthcare**.
+
+## Priority
+
+1. Accessibility (4.5:1 contrast, focus rings, labels, aria on icon buttons, keyboard order)
+2. Touch (44×44px targets, disable buttons while pending, errors next to the field)
+3. Performance (`prefers-reduced-motion`, reserved space, Next/Image)
+4. Layout (no horizontal scroll, 16px+ body on mobile, z-index 10/20/30/50)
+5. Type/color (line-height 1.5–1.75, 65–75ch)
+6. Motion (150–300ms, transform/opacity only, skeletons)
+7. Style (one system, Lucide SVG — no emoji icons)
+
+## Professional UI
+
+- `cursor-pointer` on clickable elements; hover via color/opacity, not scale that shifts layout
+- Light mode: body text slate-900, muted slate-600 min, borders gray-200 (not white/10)
+- Same container max-width; content not hidden behind fixed nav
+- Verify 375 / 768 / 1024 / 1440 before calling UI done
