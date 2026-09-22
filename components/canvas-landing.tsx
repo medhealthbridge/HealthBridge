@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ThemeIcon from "@/components/theme-icon";
 
 type Product = {
   key: string;
@@ -96,9 +97,12 @@ export default function CanvasLanding() {
           <button
             type="button"
             className="btn-ghost db-theme-toggle"
+            aria-label={
+              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
             onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
           >
-            {theme === "dark" ? "☾ Dark" : "☀ Light"}
+            <ThemeIcon theme={theme} />
           </button>
           <a href="#products" className="btn-jade db-nav-cta">
             See products
@@ -440,9 +444,20 @@ export default function CanvasLanding() {
         .db-theme-toggle,
         .db-nav-cta {
           height: 36px;
-          padding: 0 14px !important;
           font-size: 13px !important;
           box-sizing: border-box;
+          flex: 0 0 auto !important;
+        }
+        .db-nav-cta {
+          padding: 0 14px !important;
+          width: auto !important;
+        }
+        .db-theme-toggle {
+          flex-basis: 36px !important;
+          width: 36px;
+          padding: 0 !important;
+          justify-content: center;
+          font-size: 16px !important;
         }
         .db-theme-toggle {
           background: none !important;

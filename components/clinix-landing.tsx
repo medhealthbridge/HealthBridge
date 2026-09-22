@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ThemeIcon from "@/components/theme-icon";
 
 type Problem = { before: string; after: string };
 type Feature = { name: string; desc: string };
@@ -305,9 +306,12 @@ export default function ClinixLanding() {
           <button
             type="button"
             className="btn-ghost cx-theme-toggle"
+            aria-label={
+              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
             onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
           >
-            {theme === "dark" ? "☾ Dark" : "☀ Light"}
+            <ThemeIcon theme={theme} />
           </button>
           <a href="/clinix-ph/auth" className="btn-ghost cx-nav-login">
             Log in
@@ -851,9 +855,21 @@ export default function ClinixLanding() {
         .cx-nav-login,
         .cx-nav-cta {
           height: 36px;
-          padding: 0 14px !important;
           font-size: 13px !important;
           box-sizing: border-box;
+          flex: 0 0 auto !important;
+        }
+        .cx-nav-login,
+        .cx-nav-cta {
+          padding: 0 14px !important;
+          width: auto !important;
+        }
+        .cx-theme-toggle {
+          flex-basis: 36px !important;
+          width: 36px;
+          padding: 0 !important;
+          justify-content: center;
+          font-size: 16px !important;
         }
 
         .cx-hero {
@@ -1295,8 +1311,16 @@ export default function ClinixLanding() {
           .cx-landing :global(.grid4) {
             grid-template-columns: repeat(2, 1fr);
           }
+          .cx-nav {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+          }
+          .cx-brand-row {
+            order: 1;
+          }
           .cx-navlinks {
-            order: 3;
+            order: 2;
             width: 100%;
             gap: 18px;
             font-size: 13px;
@@ -1305,6 +1329,9 @@ export default function ClinixLanding() {
           }
           .cx-navlinks :global(a) {
             white-space: nowrap;
+          }
+          .cx-nav-actions {
+            order: 3;
           }
         }
         @media (max-width: 640px) {
