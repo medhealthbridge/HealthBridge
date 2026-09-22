@@ -407,6 +407,8 @@ export default function CanvasLanding() {
           border-radius: 10px;
           text-decoration: none;
           display: inline-flex;
+          align-items: center;
+          justify-content: center;
           background: transparent;
           cursor: pointer;
           font-family: var(--font-body), sans-serif;

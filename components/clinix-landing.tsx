@@ -346,11 +346,29 @@ export default function ClinixLanding() {
         onClick={() => setNavOpen(false)}
       />
       <aside className={`cx-nav-drawer${navOpen ? " cx-open" : ""}`}>
-        {NAV_LINKS.map((l) => (
-          <a href={l.href} key={l.href} onClick={() => setNavOpen(false)}>
-            {l.label}
+        <div className="cx-drawer-links">
+          {NAV_LINKS.map((l) => (
+            <a href={l.href} key={l.href} onClick={() => setNavOpen(false)}>
+              {l.label}
+            </a>
+          ))}
+        </div>
+        <div className="cx-drawer-actions">
+          <a
+            href="/clinix-ph/auth"
+            className="btn-ghost cx-drawer-login"
+            onClick={() => setNavOpen(false)}
+          >
+            Log in
           </a>
-        ))}
+          <a
+            href="/clinix-ph/auth"
+            className="btn-jade cx-drawer-cta"
+            onClick={() => setNavOpen(false)}
+          >
+            Start free trial
+          </a>
+        </div>
       </aside>
 
       <section className="sec cx-hero">
@@ -917,12 +935,28 @@ export default function ClinixLanding() {
         .cx-nav-drawer.cx-open {
           transform: translateX(0);
         }
-        .cx-nav-drawer :global(a) {
+        .cx-drawer-links {
+          display: flex;
+          flex-direction: column;
+        }
+        .cx-drawer-links :global(a) {
           color: var(--db-text);
           font-size: 16px;
           font-weight: 600;
           padding: 14px 4px;
           border-bottom: 1px solid var(--db-border);
+        }
+        .cx-drawer-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-top: 20px;
+        }
+        .cx-drawer-login,
+        .cx-drawer-cta {
+          width: 100% !important;
+          box-sizing: border-box;
+          justify-content: center;
         }
         .cx-theme-toggle,
         .cx-menu-toggle,
@@ -1387,6 +1421,10 @@ export default function ClinixLanding() {
             grid-template-columns: repeat(2, 1fr);
           }
           .cx-navlinks {
+            display: none !important;
+          }
+          .cx-nav-login,
+          .cx-nav-cta {
             display: none !important;
           }
           .cx-menu-toggle {
