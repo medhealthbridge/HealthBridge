@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ThemeIcon from "@/components/theme-icon";
+import MenuIcon from "@/components/menu-icon";
 
 type Product = {
   key: string;
@@ -76,10 +77,18 @@ const FAQS: Faq[] = [
   },
 ];
 
+const NAV_LINKS = [
+  { href: "#products", label: "Products" },
+  { href: "#modular", label: "How it works" },
+  { href: "#security", label: "Security" },
+  { href: "#faq", label: "FAQ" },
+];
+
 export default function CanvasLanding() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
   const [subdomainName, setSubdomainName] = useState("");
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
+  const [navOpen, setNavOpen] = useState(false);
 
   const subdomainPreview = `${subdomainName || "yourbusiness"}.databridgesol.space`;
 
@@ -88,10 +97,11 @@ export default function CanvasLanding() {
       <nav className="db-nav">
         <span className="db-brand">DataBridgeSol</span>
         <div className="db-nav-links">
-          <a href="#products">Products</a>
-          <a href="#modular">How it works</a>
-          <a href="#security">Security</a>
-          <a href="#faq">FAQ</a>
+          {NAV_LINKS.map((l) => (
+            <a href={l.href} key={l.href}>
+              {l.label}
+            </a>
+          ))}
         </div>
         <div className="db-nav-actions">
           <button
@@ -107,8 +117,29 @@ export default function CanvasLanding() {
           <a href="#products" className="btn-jade db-nav-cta">
             See products
           </a>
+          <button
+            type="button"
+            className="btn-ghost db-menu-toggle"
+            aria-label={navOpen ? "Close menu" : "Open menu"}
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen((o) => !o)}
+          >
+            <MenuIcon open={navOpen} />
+          </button>
         </div>
       </nav>
+
+      <div
+        className={`db-nav-backdrop${navOpen ? " db-open" : ""}`}
+        onClick={() => setNavOpen(false)}
+      />
+      <aside className={`db-nav-drawer${navOpen ? " db-open" : ""}`}>
+        {NAV_LINKS.map((l) => (
+          <a href={l.href} key={l.href} onClick={() => setNavOpen(false)}>
+            {l.label}
+          </a>
+        ))}
+      </aside>
 
       <section className="db-hero">
         <span className="pill db-pill-static">
@@ -441,7 +472,50 @@ export default function CanvasLanding() {
           gap: 10px;
           align-items: center;
         }
+        .db-menu-toggle {
+          display: none !important;
+        }
+        .db-nav-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 49;
+          background: rgba(0, 0, 0, 0.5);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.2s ease;
+        }
+        .db-nav-backdrop.db-open {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .db-nav-drawer {
+          position: fixed;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 50;
+          width: min(78vw, 300px);
+          background: var(--db-surface);
+          border-left: 1px solid var(--db-border);
+          padding: 80px 24px 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          transform: translateX(100%);
+          transition: transform 0.25s ease;
+        }
+        .db-nav-drawer.db-open {
+          transform: translateX(0);
+        }
+        .db-nav-drawer :global(a) {
+          color: var(--db-text);
+          font-size: 16px;
+          font-weight: 600;
+          padding: 14px 4px;
+          border-bottom: 1px solid var(--db-border);
+        }
         .db-theme-toggle,
+        .db-menu-toggle,
         .db-nav-cta {
           height: 36px;
           font-size: 13px !important;
@@ -452,7 +526,8 @@ export default function CanvasLanding() {
           padding: 0 14px !important;
           width: auto !important;
         }
-        .db-theme-toggle {
+        .db-theme-toggle,
+        .db-menu-toggle {
           flex-basis: 36px !important;
           width: 36px;
           padding: 0 !important;
@@ -679,19 +754,12 @@ export default function CanvasLanding() {
         @media (max-width: 760px) {
           .db-nav {
             padding: 14px 20px;
-            flex-direction: column;
-            align-items: stretch;
-            gap: 12px;
           }
           .db-nav-links {
-            order: 2;
-            width: 100%;
-            gap: 16px;
-            overflow-x: auto;
+            display: none !important;
           }
-          .db-nav-actions {
-            order: 3;
-            justify-content: space-between;
+          .db-menu-toggle {
+            display: inline-flex !important;
           }
           .db-hero {
             padding: 56px 20px 40px;

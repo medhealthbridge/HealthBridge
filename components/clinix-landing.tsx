@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ThemeIcon from "@/components/theme-icon";
+import MenuIcon from "@/components/menu-icon";
 
 type Problem = { before: string; after: string };
 type Feature = { name: string; desc: string };
@@ -262,6 +263,14 @@ const FAQS: Faq[] = [
   },
 ];
 
+const NAV_LINKS = [
+  { href: "#problems", label: "Why" },
+  { href: "#features", label: "Features" },
+  { href: "#compliance", label: "PH compliance" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "#faq", label: "FAQ" },
+];
+
 const SPECIALTIES: { key: SpecialtyKey; label: string }[] = [
   { key: "dental", label: "Dental" },
   { key: "eye", label: "Eye care" },
@@ -270,12 +279,13 @@ const SPECIALTIES: { key: SpecialtyKey; label: string }[] = [
 ];
 
 export default function ClinixLanding() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
   const [specialty, setSpecialty] = useState<SpecialtyKey>("dental");
   const [annual, setAnnual] = useState(false);
   const [clinicCount, setClinicCount] = useState(1);
   const [subdomainName, setSubdomainName] = useState("");
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
+  const [navOpen, setNavOpen] = useState(false);
 
   const activeMock = SPECIALTY_MOCKS[specialty];
   const activeTier = TIERS[clinicCount];
@@ -296,11 +306,11 @@ export default function ClinixLanding() {
           <span className="cx-brand">Clinix PH</span>
         </div>
         <div className="cx-navlinks">
-          <a href="#problems">Why</a>
-          <a href="#features">Features</a>
-          <a href="#compliance">PH compliance</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#faq">FAQ</a>
+          {NAV_LINKS.map((l) => (
+            <a href={l.href} key={l.href}>
+              {l.label}
+            </a>
+          ))}
         </div>
         <div className="cx-nav-actions">
           <button
@@ -319,8 +329,29 @@ export default function ClinixLanding() {
           <a href="/clinix-ph/auth" className="btn-jade cx-nav-cta">
             Start free trial
           </a>
+          <button
+            type="button"
+            className="btn-ghost cx-menu-toggle"
+            aria-label={navOpen ? "Close menu" : "Open menu"}
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen((o) => !o)}
+          >
+            <MenuIcon open={navOpen} />
+          </button>
         </div>
       </nav>
+
+      <div
+        className={`cx-nav-backdrop${navOpen ? " cx-open" : ""}`}
+        onClick={() => setNavOpen(false)}
+      />
+      <aside className={`cx-nav-drawer${navOpen ? " cx-open" : ""}`}>
+        {NAV_LINKS.map((l) => (
+          <a href={l.href} key={l.href} onClick={() => setNavOpen(false)}>
+            {l.label}
+          </a>
+        ))}
+      </aside>
 
       <section className="sec cx-hero">
         <span className="pill cx-pill-static">
@@ -851,7 +882,50 @@ export default function ClinixLanding() {
           gap: 10px;
           align-items: center;
         }
+        .cx-menu-toggle {
+          display: none !important;
+        }
+        .cx-nav-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 49;
+          background: rgba(0, 0, 0, 0.5);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.2s ease;
+        }
+        .cx-nav-backdrop.cx-open {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .cx-nav-drawer {
+          position: fixed;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 50;
+          width: min(78vw, 300px);
+          background: var(--db-surface);
+          border-left: 1px solid var(--db-border);
+          padding: 80px 24px 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          transform: translateX(100%);
+          transition: transform 0.25s ease;
+        }
+        .cx-nav-drawer.cx-open {
+          transform: translateX(0);
+        }
+        .cx-nav-drawer :global(a) {
+          color: var(--db-text);
+          font-size: 16px;
+          font-weight: 600;
+          padding: 14px 4px;
+          border-bottom: 1px solid var(--db-border);
+        }
         .cx-theme-toggle,
+        .cx-menu-toggle,
         .cx-nav-login,
         .cx-nav-cta {
           height: 36px;
@@ -864,7 +938,8 @@ export default function ClinixLanding() {
           padding: 0 14px !important;
           width: auto !important;
         }
-        .cx-theme-toggle {
+        .cx-theme-toggle,
+        .cx-menu-toggle {
           flex-basis: 36px !important;
           width: 36px;
           padding: 0 !important;
@@ -1311,27 +1386,11 @@ export default function ClinixLanding() {
           .cx-landing :global(.grid4) {
             grid-template-columns: repeat(2, 1fr);
           }
-          .cx-nav {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 12px;
-          }
-          .cx-brand-row {
-            order: 1;
-          }
           .cx-navlinks {
-            order: 2;
-            width: 100%;
-            gap: 18px;
-            font-size: 13px;
-            overflow-x: auto;
-            padding-top: 4px;
+            display: none !important;
           }
-          .cx-navlinks :global(a) {
-            white-space: nowrap;
-          }
-          .cx-nav-actions {
-            order: 3;
+          .cx-menu-toggle {
+            display: inline-flex !important;
           }
         }
         @media (max-width: 640px) {
