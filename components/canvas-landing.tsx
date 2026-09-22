@@ -18,7 +18,7 @@ const PRODUCTS: Product[] = [
     name: "Clinix PH — Dental & Medical",
     desc: "Multi-branch clinic management: records, scheduling, POS, inventory and role-based access for owners, practitioners and staff.",
     live: true,
-    href: "/clinix-ph",
+    href: "https://clinix.databridgesol.space",
   },
   {
     key: "pos",
@@ -249,7 +249,7 @@ export default function CanvasLanding() {
       <section className="db-cta-section">
         <h2>Not sure which module fits? Start with what&apos;s live.</h2>
         <div className="db-cta-actions">
-          <a href="/clinix-ph" className="btn-jade">
+          <a href="https://clinix.databridgesol.space" className="btn-jade">
             Explore Clinix PH →
           </a>
           <a href="#products" className="btn-ghost">
