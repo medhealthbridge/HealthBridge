@@ -287,7 +287,13 @@ export default function ClinixLanding() {
   return (
     <div className="cx-landing" data-theme={theme}>
       <nav className="cx-nav">
-        <span className="cx-brand">Clinix PH</span>
+        <div className="cx-brand-row">
+          <a href="https://databridgesol.space" className="cx-parent-link">
+            DataBridgeSol
+          </a>
+          <span className="cx-brand-sep">/</span>
+          <span className="cx-brand">Clinix PH</span>
+        </div>
         <div className="cx-navlinks">
           <a href="#problems">Why</a>
           <a href="#features">Features</a>
@@ -669,6 +675,8 @@ export default function ClinixLanding() {
           font-size: 13px;
           color: var(--db-muted);
           cursor: pointer;
+          transition: border-color 0.15s ease, background-color 0.15s ease,
+            color 0.15s ease;
         }
         .cx-landing :global(.cx-pill-static) {
           border-color: var(--db-accent);
@@ -686,6 +694,7 @@ export default function ClinixLanding() {
           border: 1px solid var(--db-border);
           border-radius: 14px;
           padding: 22px;
+          transition: border-color 0.15s ease;
         }
         .cx-landing :global(.card-hov:hover) {
           border-color: color-mix(in srgb, var(--db-accent) 40%, transparent);
@@ -704,6 +713,13 @@ export default function ClinixLanding() {
           cursor: pointer;
           font-family: var(--font-body), sans-serif;
           font-size: 15px;
+          transition: opacity 0.15s ease, transform 0.1s ease;
+        }
+        .cx-landing :global(.btn-jade:hover) {
+          opacity: 0.9;
+        }
+        .cx-landing :global(.btn-jade:active) {
+          transform: scale(0.98);
         }
         .cx-landing :global(.btn-ghost) {
           border: 1px solid var(--db-border);
@@ -717,6 +733,11 @@ export default function ClinixLanding() {
           cursor: pointer;
           font-family: var(--font-body), sans-serif;
           font-size: 15px;
+          transition: border-color 0.15s ease, background-color 0.15s ease;
+        }
+        .cx-landing :global(.btn-ghost:hover) {
+          border-color: color-mix(in srgb, var(--db-accent) 40%, transparent);
+          background: color-mix(in srgb, var(--db-accent) 6%, transparent);
         }
         .cx-landing :global(.sec) {
           max-width: 1200px;
@@ -791,6 +812,22 @@ export default function ClinixLanding() {
           padding: 14px 24px;
           flex-wrap: wrap;
         }
+        .cx-brand-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .cx-parent-link {
+          font-size: 13px;
+          color: var(--db-muted);
+        }
+        .cx-parent-link:hover {
+          color: var(--db-text);
+        }
+        .cx-brand-sep {
+          font-size: 13px;
+          color: var(--db-muted2);
+        }
         .cx-brand {
           font-family: var(--font-heading), sans-serif;
           font-weight: 800;
@@ -810,17 +847,13 @@ export default function ClinixLanding() {
           gap: 10px;
           align-items: center;
         }
-        .cx-theme-toggle {
-          padding: 8px 12px !important;
-          font-size: 13px !important;
-        }
-        .cx-nav-login {
-          padding: 8px 14px !important;
-          font-size: 13px !important;
-        }
+        .cx-theme-toggle,
+        .cx-nav-login,
         .cx-nav-cta {
-          padding: 9px 16px !important;
+          height: 36px;
+          padding: 0 14px !important;
           font-size: 13px !important;
+          box-sizing: border-box;
         }
 
         .cx-hero {

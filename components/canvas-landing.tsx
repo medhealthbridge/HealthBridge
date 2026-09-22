@@ -357,6 +357,13 @@ export default function CanvasLanding() {
           cursor: pointer;
           font-family: var(--font-body), sans-serif;
           font-size: 14px;
+          transition: opacity 0.15s ease, transform 0.1s ease;
+        }
+        .db-landing :global(.btn-jade:hover) {
+          opacity: 0.9;
+        }
+        .db-landing :global(.btn-jade:active) {
+          transform: scale(0.98);
         }
         .db-landing :global(.btn-ghost) {
           border: 1px solid var(--db-border);
@@ -369,6 +376,11 @@ export default function CanvasLanding() {
           cursor: pointer;
           font-family: var(--font-body), sans-serif;
           font-size: 14px;
+          transition: border-color 0.15s ease, background-color 0.15s ease;
+        }
+        .db-landing :global(.btn-ghost:hover) {
+          border-color: color-mix(in srgb, var(--db-accent) 40%, transparent);
+          background: color-mix(in srgb, var(--db-accent) 6%, transparent);
         }
         .db-landing :global(.btn-ghost:disabled) {
           cursor: default;
@@ -425,14 +437,15 @@ export default function CanvasLanding() {
           gap: 10px;
           align-items: center;
         }
-        .db-theme-toggle {
-          padding: 8px 12px !important;
-          font-size: 13px !important;
-          background: none !important;
-        }
+        .db-theme-toggle,
         .db-nav-cta {
-          padding: 9px 16px !important;
+          height: 36px;
+          padding: 0 14px !important;
           font-size: 13px !important;
+          box-sizing: border-box;
+        }
+        .db-theme-toggle {
+          background: none !important;
         }
 
         .db-hero {
