@@ -9,18 +9,22 @@ The create-next-app tree currently uses root `app/`. New fullstack code should g
 
 ```
 src/
-  app/                 # routes; _components/ colocated per route
+  app/                 # routes; _components/ (+ optional _data.ts) colocated per route
   server/
     actions/           # Server Actions by domain
     db/client.ts
     db/schema.ts
     services/          # framework-agnostic logic
     auth.ts
-  lib/                 # Zod schemas, constants, utils
-  components/          # shared UI
+  lib/
+    mock-data/          # static/demo/placeholder content, typed constants — see ui-separation.mdc
+    schemas/            # Zod schemas
+    constants.ts
+    utils.ts
+  components/          # shared UI (used by 2+ routes)
   types/
 ```
 
 Prefer native Next.js (Server Actions, RSC, `revalidatePath`/`revalidateTag`) over new libraries unless native cannot do the job.
 
-Do **not** follow `docs/architecture.md` Route Handler + TanStack Query defaults; that doc is superseded by these rules.
+Do **not** follow `docs/architecture.md`'s Route Handler + TanStack Query request/data-fetching pattern (`src/services/`, `src/hooks/api/`, fetch-based mutations) — Server Actions replace that here. Its general layering principle (small, single-purpose files; nothing duplicated across layers) still applies and is spelled out for UI code in `ui-separation.mdc`.

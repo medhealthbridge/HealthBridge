@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Clean code
 
-- Extract shared validation, query shapes, and UI on the second use — not before.
+- Extract shared validation, query shapes, and UI on the second use — not before. This includes whole page sections (nav, footer, FAQ, pricing card, CTA band) shared across pages/landing sites — see `ui-separation.mdc`.
 - Types from Zod (`z.infer<typeof schema>`) or ORM types. Never duplicate a parallel interface.
 - Validate at the Server Action / Route Handler boundary. Services assume validated input.
 - Prefer named service functions over inline queries in components.
