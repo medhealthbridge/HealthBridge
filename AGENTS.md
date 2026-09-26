@@ -90,4 +90,25 @@ Default stack is **nextjs + shadcn**. Product is **healthcare**.
 Priority order: (1) Accessibility (4.5:1 contrast, focus rings, labels, aria on icon buttons, keyboard order), (2) Touch (44×44px targets, disable buttons while pending, errors next to the field), (3) Performance (`prefers-reduced-motion`, reserved space, Next/Image), (4) Layout (no horizontal scroll, 16px+ body on mobile, z-index 10/20/30/50), (5) Type/color (line-height 1.5–1.75, 65–75ch), (6) Motion (150–300ms, transform/opacity only, skeletons), (7) Style (one system, Lucide SVG — no emoji icons).
 
 Professional UI checks: `cursor-pointer` on clickable elements; hover via color/opacity, not scale that shifts layout; light mode body text slate-900, muted slate-600 min, borders gray-200 (not white/10); same container max-width; content not hidden behind fixed nav; verify 375 / 768 / 1024 / 1440 before calling UI done.
+
+## Security engineering
+
+Apply to all code, features, fixes, and changes. HealthBridge handles patient data — treat these as non-negotiable.
+
+- **Authn/authz server-side only.** Every Server Action, Route Handler, and data-loading Server Component checks session and role/tenant via `src/server/auth.ts`. Never rely on client-side permission checks or hidden UI; middleware is coarse protection, not authorization.
+- **Admin and privileged operations** (company admin, clinic admin portals, role changes, billing) require an explicit server-side role check in the action/handler itself.
+- **Tenant isolation:** scope every query by tenant/clinic in the service layer; use and correctly configure Postgres Row-Level Security where applicable (see the `db-schema-architect` skill).
+- **Accounts:** enforce email verification where required; passwords are hashed by better-auth (modern KDF) — never store, log, or return plaintext passwords. Don't weaken better-auth's defaults.
+- **Tokens and secrets:** never put auth tokens or credentials in `localStorage`/`sessionStorage` — use httpOnly, secure, sameSite cookies. API keys and secrets stay server-side; only intentionally public values get the `NEXT_PUBLIC_` prefix. Never commit `.env` files or secrets.
+- **Logging:** never log passwords, tokens, secrets, session cookies, or personal/health data. No raw request bodies in logs.
+- **Queries:** use Drizzle's query builder or parameterized `sql` templates. Never build SQL by string concatenation from untrusted input.
+- **Input:** validate and sanitize all untrusted input on the server with Zod at the action/handler boundary. Prevent XSS (no `dangerouslySetInnerHTML` with user content), SQL injection, command injection, and open redirects.
+- **File uploads:** validate type, size, extension, and actual content (magic bytes) server-side; never trust client-provided filename or MIME type.
+- **Webhooks:** verify the signature before parsing or acting on the payload.
+- **Rate limiting:** apply to auth, API, upload, webhook, and other abuse-prone endpoints.
+- **Configuration:** secure defaults and hardened headers/cookies. No production debugging, verbose errors, stack traces, or dev-only features in production — return generic error messages to clients.
+- **Dependencies:** keep them updated; address known vulnerabilities (`npm audit`) rather than ignoring them.
+- **Reviews:** follow the Claude Code `security-review` skill when reviewing security-relevant changes.
+- **Preserve controls.** Never weaken, bypass, or remove a security measure to make implementation easier.
+- **Before implementing a feature**, consider its authentication, authorization, input validation, data access, secrets, logging, file handling, and abuse risks. Follow existing architecture and security patterns; prefer minimal, targeted changes over rewrites.
 <!-- END:cursor-rules-ported -->
