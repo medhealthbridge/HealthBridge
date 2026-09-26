@@ -5,10 +5,42 @@
   --foreground: #171717;
 }
 
+/* Admin consoles toggle their theme with a `dark` class, not the OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Clinix PH brand. Onboarding overrides --color-brand live for its theme preview. */
 @theme {
   --color-brand: #0f766e;
   --color-brand-700: #0a4f49;
+
+  /* Admin console palette (company admin + clinic owner console). Light values; dark below. */
+  --color-console-canvas: #f5f7f6;
+  --color-console-panel: #ffffff;
+  --color-console-panel-2: #eef2f1;
+  --color-console-line: #e1e7e4;
+  --color-console-ink: #0b0f17;
+  --color-console-muted: #4b5a55;
+  --color-console-subtle: #5c6a65;
+  --color-console-accent: #007f5f;
+  --color-console-on-accent: #ffffff;
+  --color-console-info: #0e7490;
+  --color-console-warn: #b45309;
+  --color-console-danger: #be123c;
+}
+
+.dark {
+  --color-console-canvas: #0b0f17;
+  --color-console-panel: #111827;
+  --color-console-panel-2: #151e2e;
+  --color-console-line: #1e293b;
+  --color-console-ink: #f1f5f9;
+  --color-console-muted: #94a3b8;
+  --color-console-subtle: #8c9bae;
+  --color-console-accent: #00f5a0;
+  --color-console-on-accent: #0b0f17;
+  --color-console-info: #06b6d4;
+  --color-console-warn: #f59e0b;
+  --color-console-danger: #f43f5e;
 }
 
 @theme inline {
@@ -19,6 +51,18 @@
   /* Set by next/font in app/clinix-ph/layout.tsx. */
   --font-display: var(--font-heading);
   --font-text: var(--font-body);
+  /* Tabular figures for prices, IDs and counts. */
+  --font-data: var(--font-code);
+}
+
+@theme {
+  --animate-console-slide-in: console-slide-in 240ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  @keyframes console-slide-in {
+    from {
+      transform: translateX(100%);
+    }
+  }
 }
 
 @media (prefers-color-scheme: dark) {
