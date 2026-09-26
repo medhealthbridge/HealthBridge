@@ -5,11 +5,20 @@
   --foreground: #171717;
 }
 
+/* Clinix PH brand. Onboarding overrides --color-brand live for its theme preview. */
+@theme {
+  --color-brand: #0f766e;
+  --color-brand-700: #0a4f49;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Set by next/font in app/clinix-ph/layout.tsx. */
+  --font-display: var(--font-heading);
+  --font-text: var(--font-body);
 }
 
 @media (prefers-color-scheme: dark) {

@@ -50,3 +50,23 @@ export async function withAccount<T>(accountId: string, fn: (tx: Tx) => Promise<
     return fn(tx);
   });
 }
+
+/**
+ * Both settings in one transaction, for creating a new account together
+ * with its first clinic (onboarding): the account-scoped rows and the
+ * clinic-scoped rows must commit or roll back as a unit, and the migration's
+ * RLS note requires each new row's own id to be set before its insert.
+ */
+export async function withAccountAndClinic<T>(
+  accountId: string,
+  clinicId: string,
+  fn: (tx: Tx) => Promise<T>,
+): Promise<T> {
+  assertUuid(accountId, "accountId");
+  assertUuid(clinicId, "clinicId");
+  return db.transaction(async (tx) => {
+    await tx.execute(`set local app.current_account_id = '${accountId}'`);
+    await tx.execute(`set local app.current_clinic_id = '${clinicId}'`);
+    return fn(tx);
+  });
+}

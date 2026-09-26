@@ -15,6 +15,13 @@
       "when": 1790091239587,
       "tag": "0001_enable_row_level_security",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790434732646,
+      "tag": "0002_clinic_branding_font",
+      "breakpoints": true
     }
   ]
 }

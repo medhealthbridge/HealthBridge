@@ -18,7 +18,8 @@ type SpecialtyMock = {
   sideSub: string;
   rows: { a: string; b: string }[];
 };
-type Tier = { name: string; price: string; note: string; cta: string };
+type Tier = { name: string; base: number; note: string; cta: string };
+type ModuleAddOn = { key: string; name: string; desc: string; price: number };
 
 const SPECIALTY_MOCKS: Record<SpecialtyKey, SpecialtyMock> = {
   dental: {
@@ -201,36 +202,63 @@ const ROLES: Role[] = [
 
 const TIERS: Record<number, Tier> = {
   1: {
-    name: "1 clinic",
-    price: "₱1,490/mo",
-    note: "Everything included. Unlimited patients and staff.",
+    name: "Core plan",
+    base: 1490,
+    note: "Includes 1 clinic. Add branches anytime.",
     cta: "Start 15-day free trial",
   },
   2: {
-    name: "2 clinics",
-    price: "₱2,690/mo",
-    note: "Includes the HQ view across both clinics.",
+    name: "Core plan",
+    base: 1490,
+    note: "Includes up to 2 clinics.",
     cta: "Start 15-day free trial",
   },
   3: {
-    name: "3 clinics",
-    price: "₱3,690/mo",
-    note: "Consolidated stock and branch comparison.",
+    name: "Core plan",
+    base: 1490,
+    note: "Includes up to 3 clinics.",
     cta: "Start 15-day free trial",
   },
   4: {
-    name: "4 clinics",
-    price: "₱4,590/mo",
-    note: "Inter-branch transfers with approval trail.",
+    name: "Core plan",
+    base: 1490,
+    note: "Includes up to 4 clinics.",
     cta: "Start 15-day free trial",
   },
   5: {
-    name: "5+ clinics — Enterprise",
-    price: "Custom",
-    note: "Volume pricing, onboarding support and data migration.",
+    name: "Enterprise",
+    base: 0,
+    note: "5+ clinics — volume pricing and dedicated onboarding.",
     cta: "Talk to us",
   },
 };
+
+const MODULE_ADDONS: ModuleAddOn[] = [
+  {
+    key: "pos",
+    name: "Billing & POS",
+    desc: "Cash, GCash, Maya, card, HMO checkout + receipts.",
+    price: 490,
+  },
+  {
+    key: "inventory",
+    name: "Inventory",
+    desc: "Stock per branch, expiry, low-stock alerts, transfers.",
+    price: 390,
+  },
+  {
+    key: "reports",
+    name: "Reports & analytics",
+    desc: "EOD reconciliation, top services, PF earnings.",
+    price: 290,
+  },
+  {
+    key: "recall",
+    name: "Recalls & reminders",
+    desc: "SMS/Viber recall and follow-up scheduling.",
+    price: 190,
+  },
+];
 
 const FAQS: Faq[] = [
   {
@@ -286,6 +314,7 @@ export default function ClinixLanding() {
   const [subdomainName, setSubdomainName] = useState("");
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [navOpen, setNavOpen] = useState(false);
+  const [addOns, setAddOns] = useState<string[]>([]);
 
   const activeMock = SPECIALTY_MOCKS[specialty];
   const activeTier = TIERS[clinicCount];
@@ -294,6 +323,24 @@ export default function ClinixLanding() {
     clinicCount >= 5
       ? "5 or more clinics"
       : `${clinicCount} ${clinicCount > 1 ? "clinics" : "clinic"}`;
+  const totalPrice = `₱${(
+    activeTier.base +
+    addOns.reduce(
+      (sum, key) =>
+        sum + (MODULE_ADDONS.find((m) => m.key === key)?.price ?? 0),
+      0
+    )
+  ).toLocaleString("en-PH")}/mo`;
+  const hasAddOns = addOns.length > 0;
+  const addOnSummary =
+    addOns
+      .map((key) => MODULE_ADDONS.find((m) => m.key === key)?.name)
+      .filter(Boolean)
+      .join(" + ") + " included above";
+  const toggleAddOn = (key: string) =>
+    setAddOns((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
 
   return (
     <div className="cx-landing" data-theme={theme}>
@@ -547,7 +594,11 @@ export default function ClinixLanding() {
       <section id="pricing" className="sec">
         <div className="cx-section-head">
           <span className="mono cx-eyebrow">07 / PRICING</span>
-          <h2 className="h2">Priced by how many clinics you run.</h2>
+          <h2 className="h2">Priced by module, not just clinic count.</h2>
+          <p className="cx-section-sub">
+            Start with Core, add the modules you need. Clinic count is
+            included in your plan — add branches without a new contract.
+          </p>
         </div>
         <div className="grid2 cx-pricing-grid">
           <div className="cx-pricing-controls">
@@ -570,7 +621,68 @@ export default function ClinixLanding() {
                 Annual <span className="mono cx-annual-discount">−20%</span>
               </span>
             </div>
+
+            <div className="cx-pricing-block">
+              <span className="cx-pricing-block-label">
+                Core (included)
+              </span>
+              <ul className="cx-pricing-list">
+                <li>
+                  Unlimited patients, staff accounts and clinic branches
+                </li>
+                <li>
+                  Records, booking and PhilHealth/HMO/SC-PWD handling
+                </li>
+                <li>
+                  Free data migration — from Excel/Word, PDFs, or any
+                  digital records
+                </li>
+              </ul>
+            </div>
+
+            <div className="cx-pricing-block">
+              <span className="cx-pricing-block-label">Add-on modules</span>
+              <div className="cx-modules">
+                {MODULE_ADDONS.map((m) => {
+                  const on = addOns.includes(m.key);
+                  return (
+                    <button
+                      key={m.key}
+                      type="button"
+                      className="cx-module-btn"
+                      style={{
+                        borderColor: on
+                          ? "var(--db-accent)"
+                          : "var(--db-border)",
+                      }}
+                      onClick={() => toggleAddOn(m.key)}
+                    >
+                      <span
+                        className="cx-module-check"
+                        style={{
+                          borderColor: on
+                            ? "var(--db-accent)"
+                            : "var(--db-border)",
+                          background: on ? "var(--db-accent)" : "transparent",
+                        }}
+                      />
+                      <span className="cx-module-copy">
+                        <span className="cx-module-name">{m.name}</span>
+                        <span className="cx-module-desc">{m.desc}</span>
+                      </span>
+                      <span className="mono cx-module-price">
+                        +₱{m.price.toLocaleString("en-PH")}/mo
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="cx-clinic-slider">
+              <span className="cx-pricing-block-label">
+                Clinics included
+              </span>
               <input
                 type="range"
                 min={1}
@@ -582,17 +694,14 @@ export default function ClinixLanding() {
                 {clinicCountLabel}
               </span>
             </div>
-            <ul className="cx-pricing-list">
-              <li>Unlimited patients and staff accounts</li>
-              <li>All modules — records, booking, POS, inventory, reports</li>
-              <li>PhilHealth, HMO and SC/PWD handling included</li>
-              <li>Guided onboarding and data import</li>
-            </ul>
           </div>
           <div className="card cx-tier-card">
             <span className="cx-tier-name">{activeTier.name}</span>
-            <div className="mono cx-tier-price">{activeTier.price}</div>
+            <div className="mono cx-tier-price">{totalPrice}</div>
             <span className="cx-tier-note">{activeTier.note}</span>
+            {hasAddOns && (
+              <div className="cx-addon-summary">{addOnSummary}</div>
+            )}
             <a href="/clinix-ph/auth" className="btn-jade cx-tier-cta">
               {activeTier.cta}
             </a>
@@ -1276,6 +1385,17 @@ export default function ClinixLanding() {
           font-size: 13px;
           color: var(--db-muted2);
         }
+        .cx-pricing-block {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .cx-pricing-block-label {
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: var(--db-muted2);
+        }
         .cx-pricing-list {
           margin: 0;
           padding-left: 18px;
@@ -1285,6 +1405,53 @@ export default function ClinixLanding() {
           font-size: 13.5px;
           color: var(--db-muted);
           line-height: 1.5;
+        }
+        .cx-modules {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .cx-module-btn {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          text-align: left;
+          background: var(--db-surface);
+          border: 1px solid var(--db-border);
+          border-radius: 10px;
+          padding: 10px 12px;
+          cursor: pointer;
+          color: var(--db-text);
+          font-family: var(--font-body), sans-serif;
+          transition: border-color 0.15s ease;
+        }
+        .cx-module-check {
+          width: 16px;
+          height: 16px;
+          flex: none;
+          border-radius: 4px;
+          border: 1.5px solid var(--db-border);
+          background: transparent;
+        }
+        .cx-module-copy {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+        }
+        .cx-module-name {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--db-text);
+        }
+        .cx-module-desc {
+          font-size: 11.5px;
+          color: var(--db-muted);
+        }
+        .cx-module-price {
+          font-size: 12.5px;
+          color: var(--db-accent);
+          flex: none;
         }
         .cx-tier-card {
           border-color: var(--db-accent);
@@ -1304,6 +1471,12 @@ export default function ClinixLanding() {
         .cx-tier-note {
           font-size: 12.5px;
           color: var(--db-muted);
+        }
+        .cx-addon-summary {
+          font-size: 11.5px;
+          color: var(--db-muted);
+          border-top: 1px solid var(--db-border);
+          padding-top: 8px;
         }
         .cx-tier-cta {
           width: 100%;

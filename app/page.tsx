@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Inter, JetBrains_Mono } from "next/font/google";
 import CanvasLanding from "@/components/canvas-landing";
+import ClinixLanding from "@/components/clinix-landing";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -31,7 +32,8 @@ export default function Home() {
     <div
       className={`${plusJakartaSans.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
-      <CanvasLanding />
+      {/* <CanvasLanding /> */}
+      <ClinixLanding />
     </div>
   );
 }

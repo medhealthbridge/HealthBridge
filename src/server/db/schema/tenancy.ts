@@ -43,6 +43,7 @@ export const clinics = pgTable(
     businessHours: jsonb("business_hours"),
     brandingPrimaryColor: text("branding_primary_color"),
     brandingAccentColor: text("branding_accent_color"),
+    brandingFont: text("branding_font"), // FONT_PAIRINGS key, see src/lib/constants.ts
     logoUrl: text("logo_url"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
