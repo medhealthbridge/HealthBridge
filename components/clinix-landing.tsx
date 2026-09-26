@@ -373,7 +373,7 @@ export default function ClinixLanding() {
           <a href="/clinix-ph/auth" className="btn-ghost cx-nav-login">
             Log in
           </a>
-          <a href="/clinix-ph/auth" className="btn-jade cx-nav-cta">
+          <a href="/clinix-ph/auth?mode=signup" className="btn-jade cx-nav-cta">
             Start free trial
           </a>
           <button
@@ -409,7 +409,7 @@ export default function ClinixLanding() {
             Log in
           </a>
           <a
-            href="/clinix-ph/auth"
+            href="/clinix-ph/auth?mode=signup"
             className="btn-jade cx-drawer-cta"
             onClick={() => setNavOpen(false)}
           >
@@ -433,7 +433,7 @@ export default function ClinixLanding() {
           PWD discounts computed correctly, every time.
         </p>
         <div className="cx-hero-actions">
-          <a href="/clinix-ph/auth" className="btn-jade cx-hero-primary">
+          <a href="/clinix-ph/auth?mode=signup" className="btn-jade cx-hero-primary">
             Start 15-day free trial →
           </a>
           <a href="#features" className="btn-ghost cx-hero-secondary">
@@ -702,7 +702,7 @@ export default function ClinixLanding() {
             {hasAddOns && (
               <div className="cx-addon-summary">{addOnSummary}</div>
             )}
-            <a href="/clinix-ph/auth" className="btn-jade cx-tier-cta">
+            <a href="/clinix-ph/auth?mode=signup" className="btn-jade cx-tier-cta">
               {activeTier.cta}
             </a>
           </div>
@@ -765,7 +765,7 @@ export default function ClinixLanding() {
           booking the same day.
         </p>
         <div className="cx-cta-actions">
-          <a href="/clinix-ph/auth" className="btn-jade cx-cta-primary">
+          <a href="/clinix-ph/auth?mode=signup" className="btn-jade cx-cta-primary">
             Start free trial
           </a>
           <a href="/clinix-ph/auth" className="btn-ghost cx-cta-secondary">

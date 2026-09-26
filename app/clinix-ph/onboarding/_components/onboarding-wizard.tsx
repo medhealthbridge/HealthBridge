@@ -111,7 +111,7 @@ export function OnboardingWizard() {
           {step === GO_LIVE_STEP ? (
             <>
               <span />
-              <Link href={CLINIX_ROUTES.landing} className={buttonClassName()}>
+              <Link href={CLINIX_ROUTES.admin} className={buttonClassName()}>
                 Finish
               </Link>
             </>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireUser } from "@/src/server/auth";
 import { ConsoleShell } from "@/src/components/console/console-shell";
 import { readConsoleTheme } from "@/src/components/console/read-console-theme";
 import {
@@ -18,6 +19,8 @@ export const metadata: Metadata = {
 };
 
 export default async function ClinixAdminLayout({ children }: { children: React.ReactNode }) {
+  await requireUser();
+
   return (
     <BranchProvider>
       <ConsoleShell

@@ -31,7 +31,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   }
 
   revalidatePath(CLINIX_ROUTES.landing, "layout");
-  redirect(CLINIX_ROUTES.landing);
+  redirect(CLINIX_ROUTES.admin);
 }
 
 export async function signupAction(_prev: SignupState, formData: FormData): Promise<SignupState> {
@@ -61,7 +61,7 @@ export async function socialSignInAction(formData: FormData) {
   const { url } = await auth.api.signInSocial({
     body: {
       provider,
-      callbackURL: intent === "signup" ? CLINIX_ROUTES.onboarding : CLINIX_ROUTES.landing,
+      callbackURL: intent === "signup" ? CLINIX_ROUTES.onboarding : CLINIX_ROUTES.admin,
       newUserCallbackURL: CLINIX_ROUTES.onboarding,
     },
   });
