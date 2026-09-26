@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { MailCheck } from "lucide-react";
 import { signupAction, type SignupState } from "@/src/server/actions/auth";
 import { Button } from "@/src/components/button";
 import { TextField } from "@/src/components/form-controls";
@@ -12,6 +13,20 @@ type SignupFormProps = { socialProviders: readonly SocialProvider[]; onSwitch: (
 
 export function SignupForm({ socialProviders, onSwitch }: SignupFormProps) {
   const [state, formAction, pending] = useActionState(signupAction, {} as SignupState);
+
+  if (state.emailSent) {
+    return (
+      <div role="status" className="flex flex-col gap-3.5">
+        <MailCheck aria-hidden="true" className="size-8 text-brand" />
+        <h1 className="font-display text-[26px] font-extrabold">Check your email</h1>
+        <p className="text-sm text-slate-600">
+          We sent a verification link to <span className="font-semibold text-slate-900">{state.values?.email}</span>.
+          Open it to finish creating your account and start your {TRIAL_DAYS}-day trial.
+        </p>
+        <SwitchModePrompt prompt="Already verified?" action="Log in" onSwitch={onSwitch} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3.5">

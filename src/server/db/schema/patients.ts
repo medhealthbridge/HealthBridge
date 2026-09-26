@@ -7,6 +7,8 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  unique,
+  foreignKey,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { clinics } from "./tenancy";
@@ -53,6 +55,7 @@ export const patients = pgTable(
   },
   (table) => ({
     clinicIdx: index("patients_clinic_id_idx").on(table.clinicId),
+    clinicIdIdUnique: unique("patients_clinic_id_id_unique").on(table.clinicId, table.id),
     clinicNameIdx: index("patients_clinic_name_idx").on(table.clinicId, table.lastName, table.firstName),
     clinicMrnActiveIdx: uniqueIndex("patients_clinic_mrn_active_idx")
       .on(table.clinicId, table.medicalRecordNumber)
@@ -69,16 +72,28 @@ export const patientAttachments = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
-    patientId: uuid("patient_id").notNull().references(() => patients.id),
-    uploadedByStaffId: uuid("uploaded_by_staff_id").references(() => clinicStaff.id),
+    patientId: uuid("patient_id").notNull(),
+    uploadedByStaffId: uuid("uploaded_by_staff_id"),
     fileType: text("file_type").notNull(), // 'xray' | 'lab' | 'photo' | 'document'
     label: text("label"),
-    fileUrl: text("file_url").notNull(),
+    // Object key in a private bucket — serve through a short-lived signed URL
+    // after an authorization check, never a public link.
+    storageKey: text("storage_key").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => ({
     clinicPatientIdx: index("patient_attachments_clinic_patient_idx").on(table.clinicId, table.patientId),
+    patientAttachmentsPatientFk: foreignKey({
+      name: "patient_attachments_patient_fk",
+      columns: [table.clinicId, table.patientId],
+      foreignColumns: [patients.clinicId, patients.id],
+    }),
+    patientAttachmentsUploadedByFk: foreignKey({
+      name: "patient_attachments_uploaded_by_fk",
+      columns: [table.clinicId, table.uploadedByStaffId],
+      foreignColumns: [clinicStaff.clinicId, clinicStaff.id],
+    }),
   }),
 );
 
@@ -95,9 +110,9 @@ export const clinicalNotes = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
-    patientId: uuid("patient_id").notNull().references(() => patients.id),
-    appointmentId: uuid("appointment_id").references(() => appointments.id), // deferred callback — safe despite the appointments.ts <-> patients.ts import cycle
-    authorStaffId: uuid("author_staff_id").notNull().references(() => clinicStaff.id),
+    patientId: uuid("patient_id").notNull(),
+    appointmentId: uuid("appointment_id"),
+    authorStaffId: uuid("author_staff_id").notNull(),
     noteType: text("note_type").notNull(), // 'general' | 'odontogram' | 'refraction' | 'vaccine_card' | 'treatment_plan'
     data: jsonb("data").notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -106,6 +121,22 @@ export const clinicalNotes = pgTable(
   },
   (table) => ({
     clinicPatientIdx: index("clinical_notes_clinic_patient_idx").on(table.clinicId, table.patientId),
+    clinicalNotesPatientFk: foreignKey({
+      name: "clinical_notes_patient_fk",
+      columns: [table.clinicId, table.patientId],
+      foreignColumns: [patients.clinicId, patients.id],
+    }),
+    // Deferred (extra-config) callback — safe despite the appointments.ts <-> patients.ts import cycle.
+    clinicalNotesAppointmentFk: foreignKey({
+      name: "clinical_notes_appointment_fk",
+      columns: [table.clinicId, table.appointmentId],
+      foreignColumns: [appointments.clinicId, appointments.id],
+    }),
+    clinicalNotesAuthorFk: foreignKey({
+      name: "clinical_notes_author_fk",
+      columns: [table.clinicId, table.authorStaffId],
+      foreignColumns: [clinicStaff.clinicId, clinicStaff.id],
+    }),
   }),
 );
 
@@ -115,7 +146,7 @@ export const recalls = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
-    patientId: uuid("patient_id").notNull().references(() => patients.id),
+    patientId: uuid("patient_id").notNull(),
     recallType: text("recall_type").notNull(), // 'dental_recall' | 'vaccine_due' | 'post_procedure_checkin'
     dueDate: date("due_date").notNull(),
     status: text("status").notNull().default("pending"), // 'pending' | 'notified' | 'completed' | 'cancelled'
@@ -128,5 +159,10 @@ export const recalls = pgTable(
   (table) => ({
     clinicDueDateIdx: index("recalls_clinic_due_date_idx").on(table.clinicId, table.dueDate),
     clinicPatientIdx: index("recalls_clinic_patient_idx").on(table.clinicId, table.patientId),
+    recallsPatientFk: foreignKey({
+      name: "recalls_patient_fk",
+      columns: [table.clinicId, table.patientId],
+      foreignColumns: [patients.clinicId, patients.id],
+    }),
   }),
 );

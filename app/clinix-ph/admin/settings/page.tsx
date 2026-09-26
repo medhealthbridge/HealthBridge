@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireClinicOwner } from "@/src/server/auth";
 import { PageHeader } from "@/src/components/console/page-header";
 import { CUSTOM_FIELDS } from "@/src/lib/mock-data/clinix-admin";
 import { ActiveBranchName } from "../_components/branch-context";
@@ -7,7 +8,9 @@ import { VerticalCard } from "./_components/vertical-card";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  await requireClinicOwner();
+
   return (
     <>
       <PageHeader

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Poppins } from "next/font/google";
-import { requireUser } from "@/src/server/auth";
+import { requireOnboardingPending } from "@/src/server/auth";
 import { OnboardingWizard } from "./_components/onboarding-wizard";
 
 // Heading options for the branding step's font pairing; not needed up front.
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ClinixOnboardingPage() {
-  await requireUser();
+  await requireOnboardingPending();
 
   return (
     <main

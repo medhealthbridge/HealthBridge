@@ -7,6 +7,8 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  unique,
+  foreignKey,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { user } from "./auth";
@@ -40,6 +42,7 @@ export const clinicStaff = pgTable(
   },
   (table) => ({
     clinicIdx: index("clinic_staff_clinic_id_idx").on(table.clinicId),
+    clinicIdIdUnique: unique("clinic_staff_clinic_id_id_unique").on(table.clinicId, table.id),
     clinicUserActiveIdx: uniqueIndex("clinic_staff_clinic_user_active_idx")
       .on(table.clinicId, table.userId)
       .where(sql`deleted_at is null`),
@@ -53,14 +56,21 @@ export const staffInvites = pgTable(
     clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
     email: text("email").notNull(),
     role: staffRoleEnum("role").notNull(),
-    invitedByStaffId: uuid("invited_by_staff_id").references(() => clinicStaff.id),
-    token: text("token").notNull().unique(),
+    invitedByStaffId: uuid("invited_by_staff_id"),
+    // SHA-256 of the emailed token (see services/tokens.ts) — the raw token is
+    // never stored, so a database read can't be replayed as an invite link.
+    tokenHash: text("token_hash").notNull().unique(),
     status: text("status").notNull().default("pending"), // 'pending' | 'accepted' | 'revoked' | 'expired'
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     clinicIdx: index("staff_invites_clinic_id_idx").on(table.clinicId),
+    staffInvitesInvitedByFk: foreignKey({
+      name: "staff_invites_invited_by_fk",
+      columns: [table.clinicId, table.invitedByStaffId],
+      foreignColumns: [clinicStaff.clinicId, clinicStaff.id],
+    }),
   }),
 );
 

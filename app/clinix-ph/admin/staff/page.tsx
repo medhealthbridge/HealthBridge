@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireClinicOwner } from "@/src/server/auth";
 import { PageHeader } from "@/src/components/console/page-header";
 import { StaffTable } from "@/src/components/console/staff-table";
 import { ToastButton } from "@/src/components/console/toast";
@@ -7,7 +8,9 @@ import { ImportButton } from "../_components/import-button";
 
 export const metadata: Metadata = { title: "Staff & roles" };
 
-export default function StaffPage() {
+export default async function StaffPage() {
+  await requireClinicOwner();
+
   return (
     <>
       <PageHeader

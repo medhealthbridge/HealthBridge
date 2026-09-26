@@ -1,3 +1,4 @@
+import { requireClinicOwner } from "@/src/server/auth";
 import { ActionListCard } from "@/src/components/console/action-list-card";
 import { KpiGrid } from "@/src/components/console/kpi-grid";
 import { MeterListCard } from "@/src/components/console/meter-list-card";
@@ -14,7 +15,9 @@ import {
 import { ActiveBranchName } from "./_components/branch-context";
 import { LiveQueueCard } from "./_components/live-queue-card";
 
-export default function ClinixOverviewPage() {
+export default async function ClinixOverviewPage() {
+  await requireClinicOwner();
+
   return (
     <>
       <PageHeader

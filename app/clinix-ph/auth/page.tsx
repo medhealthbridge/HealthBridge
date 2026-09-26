@@ -16,7 +16,8 @@ export default async function ClinixAuthPage({
 }: {
   searchParams: Promise<{ mode?: string }>;
 }) {
-  if (await getSession()) redirect(CLINIX_ROUTES.admin);
+  // Unverified sessions stay here: requireUser() would bounce them straight back.
+  if ((await getSession())?.user.emailVerified) redirect(CLINIX_ROUTES.admin);
   const { mode } = await searchParams;
 
   return (

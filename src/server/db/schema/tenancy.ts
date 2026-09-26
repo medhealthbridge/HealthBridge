@@ -6,6 +6,7 @@ import {
   timestamp,
   jsonb,
   index,
+  unique,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
@@ -14,10 +15,12 @@ import { user } from "./auth";
  * subscription. No `deletedAt`: per docs/healthbridge-plan.md, clinic and
  * account data is never deleted on trial expiry or non-payment — the
  * subscription is "masterlocked" instead (see `subscriptions.status`).
+ * One account per owner (`ownerUserId` unique): more clinics are added to
+ * the same account, never by onboarding a second one.
  */
 export const accounts = pgTable("accounts", {
   id: uuid("id").primaryKey().defaultRandom(),
-  ownerUserId: text("owner_user_id").notNull().references(() => user.id),
+  ownerUserId: text("owner_user_id").notNull().unique().references(() => user.id),
   companyName: text("company_name").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
@@ -50,6 +53,7 @@ export const clinics = pgTable(
   },
   (table) => ({
     accountIdx: index("clinics_account_id_idx").on(table.accountId),
+    accountIdIdUnique: unique("clinics_account_id_id_unique").on(table.accountId, table.id),
   }),
 );
 

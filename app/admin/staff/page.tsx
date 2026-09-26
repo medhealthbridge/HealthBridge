@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requirePlatformAdmin } from "@/src/server/auth";
 import { PageHeader } from "@/src/components/console/page-header";
 import { StaffTable } from "@/src/components/console/staff-table";
 import { ToastButton } from "@/src/components/console/toast";
@@ -6,7 +7,9 @@ import { COMPANY_STAFF } from "@/src/lib/mock-data/company-admin";
 
 export const metadata: Metadata = { title: "Company staff" };
 
-export default function CompanyStaffPage() {
+export default async function CompanyStaffPage() {
+  await requirePlatformAdmin();
+
   return (
     <>
       <PageHeader

@@ -1,3 +1,4 @@
+import { requirePlatformAdmin } from "@/src/server/auth";
 import { ActionListCard } from "@/src/components/console/action-list-card";
 import { KpiGrid } from "@/src/components/console/kpi-grid";
 import { MeterListCard } from "@/src/components/console/meter-list-card";
@@ -13,7 +14,9 @@ import {
 } from "@/src/lib/mock-data/company-admin";
 import { TenantActivityCard } from "./_components/tenant-activity-card";
 
-export default function CompanyOverviewPage() {
+export default async function CompanyOverviewPage() {
+  await requirePlatformAdmin();
+
   return (
     <>
       <PageHeader title="Company overview" description={`All tenants · ${COMPANY_AS_OF}`} actions={<RangeTabs />} />

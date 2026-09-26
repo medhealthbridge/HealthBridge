@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requirePlatformAdmin } from "@/src/server/auth";
 import { ConsoleShell } from "@/src/components/console/console-shell";
 import { readConsoleTheme } from "@/src/components/console/read-console-theme";
 import { brandFontVariables } from "@/src/lib/fonts";
@@ -16,7 +17,11 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+// Each page repeats this check: a layout isn't re-rendered on client
+// navigation, so it can't be the only gate.
 export default async function CompanyAdminLayout({ children }: { children: React.ReactNode }) {
+  await requirePlatformAdmin();
+
   return (
     <div className={`${brandFontVariables} flex flex-1 flex-col`}>
       <ConsoleShell

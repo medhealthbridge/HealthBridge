@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema";
 
@@ -47,6 +48,20 @@ export async function withAccount<T>(accountId: string, fn: (tx: Tx) => Promise<
   assertUuid(accountId, "accountId");
   return db.transaction(async (tx) => {
     await tx.execute(`set local app.current_account_id = '${accountId}'`);
+    return fn(tx);
+  });
+}
+
+/**
+ * Runs `fn` with `app.current_user_id` set, for the user-scoped read policies
+ * (e.g. `clinic_staff`'s `member_read`: "which clinics am I staff at?") that
+ * have to work before any clinic is chosen. better-auth user ids aren't uuids,
+ * so this goes through a parameterized `set_config` instead of `SET LOCAL`.
+ * `userId` must come from the verified session, never from client input.
+ */
+export async function withUser<T>(userId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select set_config('app.current_user_id', ${userId}, true)`);
     return fn(tx);
   });
 }

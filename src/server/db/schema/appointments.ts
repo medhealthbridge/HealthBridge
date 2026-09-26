@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, integer, timestamp, index, unique, foreignKey } from "drizzle-orm/pg-core";
 import { clinics } from "./tenancy";
 import { clinicStaff } from "./staff";
 import { patients } from "./patients";
@@ -14,9 +14,9 @@ export const appointments = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
-    patientId: uuid("patient_id").notNull().references(() => patients.id),
-    practitionerStaffId: uuid("practitioner_staff_id").references(() => clinicStaff.id),
-    confirmedByStaffId: uuid("confirmed_by_staff_id").references(() => clinicStaff.id),
+    patientId: uuid("patient_id").notNull(),
+    practitionerStaffId: uuid("practitioner_staff_id"),
+    confirmedByStaffId: uuid("confirmed_by_staff_id"),
     chairOrRoom: text("chair_or_room"),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
     endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
@@ -31,5 +31,21 @@ export const appointments = pgTable(
   (table) => ({
     clinicStartsAtIdx: index("appointments_clinic_starts_at_idx").on(table.clinicId, table.startsAt),
     clinicPatientIdx: index("appointments_clinic_patient_idx").on(table.clinicId, table.patientId),
+    clinicIdIdUnique: unique("appointments_clinic_id_id_unique").on(table.clinicId, table.id),
+    appointmentsPatientFk: foreignKey({
+      name: "appointments_patient_fk",
+      columns: [table.clinicId, table.patientId],
+      foreignColumns: [patients.clinicId, patients.id],
+    }),
+    appointmentsPractitionerFk: foreignKey({
+      name: "appointments_practitioner_fk",
+      columns: [table.clinicId, table.practitionerStaffId],
+      foreignColumns: [clinicStaff.clinicId, clinicStaff.id],
+    }),
+    appointmentsConfirmedByFk: foreignKey({
+      name: "appointments_confirmed_by_fk",
+      columns: [table.clinicId, table.confirmedByStaffId],
+      foreignColumns: [clinicStaff.clinicId, clinicStaff.id],
+    }),
   }),
 );

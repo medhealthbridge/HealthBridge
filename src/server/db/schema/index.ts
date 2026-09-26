@@ -7,3 +7,4 @@ export * from "./billing";
 export * from "./inventory";
 export * from "./audit";
 export * from "./relations";
+export * from "./rate-limits";

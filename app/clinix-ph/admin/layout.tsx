@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireUser } from "@/src/server/auth";
+import { requireClinicOwner } from "@/src/server/auth";
 import { ConsoleShell } from "@/src/components/console/console-shell";
 import { readConsoleTheme } from "@/src/components/console/read-console-theme";
 import {
@@ -18,8 +18,10 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+// Each page repeats this check: a layout isn't re-rendered on client
+// navigation, so it can't be the only gate.
 export default async function ClinixAdminLayout({ children }: { children: React.ReactNode }) {
-  await requireUser();
+  await requireClinicOwner();
 
   return (
     <BranchProvider>

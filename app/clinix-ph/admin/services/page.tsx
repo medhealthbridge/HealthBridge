@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireClinicOwner } from "@/src/server/auth";
 import { PageHeader } from "@/src/components/console/page-header";
 import { ToastButton } from "@/src/components/console/toast";
 import { ImportButton } from "../_components/import-button";
@@ -6,7 +7,9 @@ import { ServicesTable } from "./_components/services-table";
 
 export const metadata: Metadata = { title: "Services & pricing" };
 
-export default function ServicesPage() {
+export default async function ServicesPage() {
+  await requireClinicOwner();
+
   return (
     <>
       <PageHeader
