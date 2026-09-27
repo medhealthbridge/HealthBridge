@@ -3,6 +3,7 @@ export const CLINIX_ROUTES = {
   auth: "/clinix-ph/auth",
   onboarding: "/clinix-ph/onboarding",
   admin: "/clinix-ph/admin",
+  app: "/clinix-ph/app",
 } as const;
 
 export const COMPANY_ADMIN_ROUTE = "/admin";

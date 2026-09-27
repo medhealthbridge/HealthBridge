@@ -18,11 +18,12 @@ type ConsoleShellProps = {
   quickActions: QuickAction[];
   notifications: ConsoleNotification[];
   sidebarSlot?: ReactNode;
+  topbarSlot?: ReactNode;
   children: ReactNode;
 };
 
 /** Frame shared by the company admin and the clinic owner console. Pages render inside as server components. */
-export function ConsoleShell({ initialTheme, brand, user, nav, searchPlaceholder, quickActions, notifications, sidebarSlot, children }: ConsoleShellProps) {
+export function ConsoleShell({ initialTheme, brand, user, nav, searchPlaceholder, quickActions, notifications, sidebarSlot, topbarSlot, children }: ConsoleShellProps) {
   const [theme, setTheme] = useState(initialTheme);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -47,7 +48,7 @@ export function ConsoleShell({ initialTheme, brand, user, nav, searchPlaceholder
           slot={sidebarSlot}
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <ConsoleTopbar nav={nav} searchPlaceholder={searchPlaceholder} quickActions={quickActions} notifications={notifications} />
+          <ConsoleTopbar nav={nav} searchPlaceholder={searchPlaceholder} quickActions={quickActions} notifications={notifications} slot={topbarSlot} />
           <main className="flex min-w-0 flex-1 flex-col gap-4 px-3 pt-3.5 pb-10 md:px-5 md:pt-[18px] md:pb-11">{children}</main>
         </div>
       </ToastProvider>

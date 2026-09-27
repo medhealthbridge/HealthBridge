@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Bell, Search } from "lucide-react";
 import type { ConsoleNotification, NavGroup, QuickAction } from "@/src/types/console";
 import { CommandPalette } from "./command-palette";
@@ -13,9 +13,11 @@ type ConsoleTopbarProps = {
   searchPlaceholder: string;
   quickActions: QuickAction[];
   notifications: ConsoleNotification[];
+  /** Console-specific action; the clinic console puts its "Clinic app" link here. */
+  slot?: ReactNode;
 };
 
-export function ConsoleTopbar({ nav, searchPlaceholder, quickActions, notifications }: ConsoleTopbarProps) {
+export function ConsoleTopbar({ nav, searchPlaceholder, quickActions, notifications, slot }: ConsoleTopbarProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
@@ -50,6 +52,8 @@ export function ConsoleTopbar({ nav, searchPlaceholder, quickActions, notificati
         <Bell aria-hidden="true" className="size-4" />
         <span className="rounded-full bg-console-danger/15 px-1.5 text-[10px] font-semibold text-console-danger">{notifications.length}</span>
       </ConsoleButton>
+
+      {slot}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} nav={nav} />
       <NotificationsDrawer open={notificationsOpen} onClose={() => setNotificationsOpen(false)} notifications={notifications} />

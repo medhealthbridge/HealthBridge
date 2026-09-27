@@ -11,6 +11,7 @@ import {
   CLINIX_SEARCH_PLACEHOLDER,
 } from "@/src/lib/mock-data/clinix-admin";
 import { BranchProvider } from "./_components/branch-context";
+import { ClinicAppLink } from "./_components/clinic-app-link";
 import { BranchSwitcher } from "./_components/branch-switcher";
 
 export const metadata: Metadata = {
@@ -34,6 +35,7 @@ export default async function ClinixAdminLayout({ children }: { children: React.
         quickActions={CLINIX_QUICK_ACTIONS}
         notifications={CLINIX_NOTIFICATIONS}
         sidebarSlot={<BranchSwitcher />}
+        topbarSlot={<ClinicAppLink />}
       >
         {children}
       </ConsoleShell>
