@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { enabledSocialProviders, getSession } from "@/src/server/auth";
 import { CLINIX_ROUTES } from "@/src/lib/constants";
+import { parseAuthRole } from "./_data";
 import { AuthCard } from "./_components/auth-card";
 
 export const metadata: Metadata = {
@@ -14,11 +15,11 @@ export const metadata: Metadata = {
 export default async function ClinixAuthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string }>;
+  searchParams: Promise<{ mode?: string; role?: string }>;
 }) {
   // Unverified sessions stay here: requireUser() would bounce them straight back.
   if ((await getSession())?.user.emailVerified) redirect(CLINIX_ROUTES.admin);
-  const { mode } = await searchParams;
+  const { mode, role } = await searchParams;
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-slate-50 p-4 font-text text-slate-900 sm:p-6">
@@ -33,6 +34,7 @@ export default async function ClinixAuthPage({
       </div>
       <AuthCard
         initialMode={mode === "signup" ? "signup" : "login"}
+        role={parseAuthRole(role)}
         socialProviders={enabledSocialProviders}
       />
     </main>

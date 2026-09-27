@@ -36,3 +36,12 @@ export async function sendVerificationEmail(recipient: { name: string; email: st
     html: `<p>Hi ${escapeHtml(recipient.name)},</p><p>Confirm your email to finish setting up your Clinix PH account:</p><p><a href="${escapeHtml(url)}">Verify email</a></p><p>If you didn't sign up, you can ignore this email.</p>`,
   });
 }
+
+export async function sendPasswordResetEmail(recipient: { name: string; email: string }, url: string) {
+  await sendEmail({
+    to: recipient.email,
+    subject: "Reset your Clinix PH password",
+    text: `Hi ${recipient.name},\n\nOpen this link to set a new password:\n${url}\n\nThe link expires in one hour. If you didn't ask for it, you can ignore this email — your password stays as it is.`,
+    html: `<p>Hi ${escapeHtml(recipient.name)},</p><p>Open this link to set a new password:</p><p><a href="${escapeHtml(url)}">Reset password</a></p><p>The link expires in one hour. If you didn't ask for it, you can ignore this email — your password stays as it is.</p>`,
+  });
+}

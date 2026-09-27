@@ -4,6 +4,8 @@ export const CLINIX_ROUTES = {
   onboarding: "/clinix-ph/onboarding",
   admin: "/clinix-ph/admin",
   app: "/clinix-ph/app",
+  resetRequest: "/clinix-ph/auth/reset",
+  resetConfirm: "/clinix-ph/auth/reset/confirm",
 } as const;
 
 export const COMPANY_ADMIN_ROUTE = "/admin";

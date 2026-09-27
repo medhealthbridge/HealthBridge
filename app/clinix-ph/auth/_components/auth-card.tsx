@@ -2,16 +2,16 @@
 
 import { useState, type ReactNode } from "react";
 import type { SocialProvider } from "@/src/lib/constants";
-import type { AuthMode } from "../_data";
+import type { AuthMode, AuthRole } from "../_data";
 import { AuthSidePanel } from "./auth-side-panel";
 import { LoginForm } from "./login-form";
 import { SignupForm } from "./signup-form";
 
 const EASE = "ease-[cubic-bezier(.65,0,.35,1)] motion-reduce:transition-none";
 
-type AuthCardProps = { initialMode: AuthMode; socialProviders: readonly SocialProvider[] };
+type AuthCardProps = { initialMode: AuthMode; role: AuthRole; socialProviders: readonly SocialProvider[] };
 
-export function AuthCard({ initialMode, socialProviders }: AuthCardProps) {
+export function AuthCard({ initialMode, role, socialProviders }: AuthCardProps) {
   const [mode, setMode] = useState(initialMode);
   const isLogin = mode === "login";
   const toggleMode = () => setMode(isLogin ? "signup" : "login");
@@ -27,7 +27,7 @@ export function AuthCard({ initialMode, socialProviders }: AuthCardProps) {
         }`}
       >
         <AuthPanel active={isLogin} hiddenOffset="-translate-x-6">
-          <LoginForm socialProviders={socialProviders} onSwitch={toggleMode} />
+          <LoginForm socialProviders={socialProviders} role={role} onSwitch={toggleMode} />
         </AuthPanel>
         <AuthPanel active={!isLogin} hiddenOffset="translate-x-6">
           <SignupForm socialProviders={socialProviders} onSwitch={toggleMode} />

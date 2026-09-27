@@ -9,7 +9,7 @@ import { cache } from "react";
 import { db } from "./db/client";
 import { account, session, user, verification } from "./db/schema";
 import { isPlatformAdmin, listActiveMemberships } from "./services/access";
-import { sendVerificationEmail } from "./services/email";
+import { sendPasswordResetEmail, sendVerificationEmail } from "./services/email";
 import { consumeRateLimit, type RateLimitRule } from "./services/rate-limit";
 import { CLINIX_ROUTES, SOCIAL_PROVIDERS } from "@/src/lib/constants";
 
@@ -85,7 +85,16 @@ export const auth = betterAuth({
     provider: "pg",
     schema: { user, session, account, verification },
   }),
-  emailAndPassword: { enabled: true, requireEmailVerification: true },
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+    // `url` points at better-auth's own /reset-password/:token, which checks
+    // the token before redirecting to the form — so an expired link never
+    // reaches a password field.
+    sendResetPassword: async ({ user, url }) => {
+      after(() => sendPasswordResetEmail(user, url));
+    },
+  },
   emailVerification: {
     sendOnSignUp: true,
     sendOnSignIn: true,
