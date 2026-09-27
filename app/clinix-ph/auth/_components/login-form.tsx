@@ -54,7 +54,7 @@ export function LoginForm({ socialProviders, role, onSwitch }: LoginFormProps) {
         />
         <Link
           href={CLINIX_ROUTES.resetRequest}
-          className="self-end text-xs font-medium text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="-mt-1 mb-0.5 self-end text-xs font-medium text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           Forgot password?
         </Link>

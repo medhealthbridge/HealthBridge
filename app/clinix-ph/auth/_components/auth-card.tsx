@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import type { SocialProvider } from "@/src/lib/constants";
 import type { AuthMode, AuthRole } from "../_data";
+import { AuthMobileBanner } from "./auth-mobile-banner";
 import { AuthSidePanel } from "./auth-side-panel";
 import { LoginForm } from "./login-form";
 import { SignupForm } from "./signup-form";
@@ -18,11 +19,12 @@ export function AuthCard({ initialMode, role, socialProviders }: AuthCardProps) 
 
   return (
     <div className="relative w-full max-w-[440px] overflow-hidden rounded-[20px] bg-white shadow-xl md:flex md:min-h-[560px] md:max-w-[960px]">
+      <AuthMobileBanner mode={mode} onToggle={toggleMode} />
       <AuthSidePanel mode={mode} onToggle={toggleMode} />
 
       {/* On md+ the form column slides to whichever side the brand panel just left. */}
       <div
-        className={`grid w-full place-items-center content-center px-5 py-8 sm:px-10 md:w-[58%] md:py-11 md:transition-transform md:duration-300 ${EASE} ${
+        className={`grid w-full place-items-center content-center px-4 py-7 min-[380px]:px-5.5 sm:px-10 md:w-[58%] md:py-11 md:transition-transform md:duration-300 ${EASE} ${
           isLogin ? "" : "md:translate-x-[72.41%]"
         }`}
       >

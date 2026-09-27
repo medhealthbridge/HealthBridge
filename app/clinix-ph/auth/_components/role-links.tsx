@@ -14,7 +14,7 @@ export function RoleLinks({ role }: { role: AuthRole }) {
   const listed = isOwner ? AUTH_ROLES.filter((option) => option !== "owner") : AUTH_ROLES;
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5 border-t border-slate-100 pt-3">
       <p className="text-center text-xs text-slate-600">
         {isOwner ? "Not an owner? " : null}
         {listed.map((option, index) => (
