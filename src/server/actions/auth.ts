@@ -10,6 +10,7 @@ import { CLINIX_ROUTES } from "@/src/lib/constants";
 import {
   loginSchema,
   requestPasswordResetSchema,
+  resendVerificationSchema,
   resetPasswordSchema,
   signupSchema,
   socialSignInSchema,
@@ -19,10 +20,11 @@ import {
 } from "@/src/lib/schemas/auth";
 import type { FormState } from "@/src/types/form-state";
 
-export type LoginState = FormState<keyof LoginInput>;
+export type LoginState = FormState<keyof LoginInput> & { needsVerification?: boolean };
 export type RequestResetState = FormState<"email"> & { sent?: boolean };
 export type ResetPasswordState = FormState<keyof ResetPasswordInput> & { done?: boolean };
 export type SignupState = FormState<keyof SignupInput> & { emailSent?: boolean };
+export type ResendVerificationState = FormState<"email"> & { sentAt?: number };
 
 const RATE_LIMITED_MESSAGE = "Too many attempts. Wait a few minutes and try again.";
 
@@ -45,7 +47,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     if (isRateLimited(error)) return { values, message: RATE_LIMITED_MESSAGE };
     // Only reachable with the right password, so it reveals nothing to a guesser.
     if (error.body?.code === "EMAIL_NOT_VERIFIED") {
-      return { values, message: "Verify your email first — we've sent you a new link." };
+      return { values, needsVerification: true, message: "Verify your email first — we've sent you a new link." };
     }
     return { values, message: "Incorrect email or password." };
   }
@@ -77,6 +79,31 @@ export async function signupAction(_prev: SignupState, formData: FormData): Prom
   }
 
   return { values, emailSent: true };
+}
+
+export async function resendVerificationAction(
+  _prev: ResendVerificationState,
+  formData: FormData,
+): Promise<ResendVerificationState> {
+  const values = { email: String(formData.get("email") ?? "") };
+  const parsed = resendVerificationSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { values, fieldErrors: z.flattenError(parsed.error).fieldErrors };
+
+  try {
+    // Without a session, better-auth answers the same way (with a timing
+    // floor) for an unknown, unverified or already-verified address, so a
+    // resend can't be used to probe for accounts.
+    await auth.api.sendVerificationEmail({
+      body: { email: parsed.data.email, callbackURL: CLINIX_ROUTES.onboarding },
+      headers: await headers(),
+    });
+  } catch (error) {
+    if (!(error instanceof APIError)) throw error;
+    if (isRateLimited(error)) return { values, message: RATE_LIMITED_MESSAGE };
+    return { values, message: "We couldn't resend the link. Try again." };
+  }
+
+  return { values, sentAt: Date.now() };
 }
 
 export async function socialSignInAction(formData: FormData) {

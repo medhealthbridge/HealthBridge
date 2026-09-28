@@ -6,6 +6,7 @@ import { signupAction, type SignupState } from "@/src/server/actions/auth";
 import { Button } from "@/src/components/button";
 import { TextField } from "@/src/components/form-controls";
 import { TRIAL_DAYS, type SocialProvider } from "@/src/lib/constants";
+import { ResendVerification } from "./resend-verification";
 import { SocialSignIn } from "./social-sign-in";
 import { SwitchModePrompt } from "./switch-mode-prompt";
 
@@ -23,6 +24,7 @@ export function SignupForm({ socialProviders, onSwitch }: SignupFormProps) {
           We sent a verification link to <span className="font-semibold text-slate-900">{state.values?.email}</span>.
           Open it to finish creating your account and start your {TRIAL_DAYS}-day trial.
         </p>
+        <ResendVerification email={state.values?.email ?? ""} />
         <SwitchModePrompt prompt="Already verified?" action="Log in" onSwitch={onSwitch} />
       </div>
     );

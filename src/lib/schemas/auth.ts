@@ -20,6 +20,8 @@ export const signupSchema = z.object({
 
 export const requestPasswordResetSchema = z.object({ email });
 
+export const resendVerificationSchema = z.object({ email });
+
 // Same 8–128 bounds as sign-up, so a reset can't set a password the
 // sign-up form would have rejected.
 export const resetPasswordSchema = z.object({

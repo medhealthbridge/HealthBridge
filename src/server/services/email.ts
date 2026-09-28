@@ -1,21 +1,22 @@
+import type { EmailContent } from "@/src/server/emails/layout";
+import { resetPasswordTemplate } from "@/src/server/emails/reset-password";
+import { verifyEmailTemplate } from "@/src/server/emails/verify-email";
+
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
-type Email = { to: string; subject: string; text: string; html: string };
+type Recipient = { name: string; email: string };
 
-const HTML_ESCAPES: Record<string, string> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-};
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
+// Resend's error messages can quote an address; logs must not carry personal data.
+function redactEmails(message: string) {
+  return message.replace(/[^\s@<>()"']+@[^\s@<>()"']+/g, "[email]");
 }
 
-/** Sends through Resend's HTTP API. Errors never include the message body, which may hold a token. */
-async function sendEmail(email: Email) {
+/**
+ * Sends through Resend's HTTP API. A rejection is logged with Resend's own
+ * reason (e.g. unverified sender domain) and the subject — never the body,
+ * which holds a sign-in token — then rethrown.
+ */
+async function sendEmail(to: string, email: EmailContent) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) throw new Error("Email is not configured: set RESEND_API_KEY and EMAIL_FROM.");
@@ -23,25 +24,20 @@ async function sendEmail(email: Email) {
   const response = await fetch(RESEND_ENDPOINT, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from, ...email }),
+    body: JSON.stringify({ from, to: [to], ...email }),
   });
-  if (!response.ok) throw new Error(`Email provider rejected the message (HTTP ${response.status}).`);
+  if (response.ok) return;
+
+  const error: { name?: string; message?: string } = await response.json().catch(() => ({}));
+  const reason = redactEmails(error.message ?? "no reason given");
+  console.error(`[email] "${email.subject}" rejected by Resend (HTTP ${response.status}, ${error.name}): ${reason}`);
+  throw new Error(`Email provider rejected the message (HTTP ${response.status}).`);
 }
 
-export async function sendVerificationEmail(recipient: { name: string; email: string }, url: string) {
-  await sendEmail({
-    to: recipient.email,
-    subject: "Verify your email for Clinix PH",
-    text: `Hi ${recipient.name},\n\nConfirm your email to finish setting up your Clinix PH account:\n${url}\n\nIf you didn't sign up, you can ignore this email.`,
-    html: `<p>Hi ${escapeHtml(recipient.name)},</p><p>Confirm your email to finish setting up your Clinix PH account:</p><p><a href="${escapeHtml(url)}">Verify email</a></p><p>If you didn't sign up, you can ignore this email.</p>`,
-  });
+export async function sendVerificationEmail(recipient: Recipient, url: string) {
+  await sendEmail(recipient.email, verifyEmailTemplate({ name: recipient.name, url }));
 }
 
-export async function sendPasswordResetEmail(recipient: { name: string; email: string }, url: string) {
-  await sendEmail({
-    to: recipient.email,
-    subject: "Reset your Clinix PH password",
-    text: `Hi ${recipient.name},\n\nOpen this link to set a new password:\n${url}\n\nThe link expires in one hour. If you didn't ask for it, you can ignore this email — your password stays as it is.`,
-    html: `<p>Hi ${escapeHtml(recipient.name)},</p><p>Open this link to set a new password:</p><p><a href="${escapeHtml(url)}">Reset password</a></p><p>The link expires in one hour. If you didn't ask for it, you can ignore this email — your password stays as it is.</p>`,
-  });
+export async function sendPasswordResetEmail(recipient: Recipient, url: string) {
+  await sendEmail(recipient.email, resetPasswordTemplate({ name: recipient.name, url }));
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ThemeIcon from "@/components/theme-icon";
 import MenuIcon from "@/components/menu-icon";
+import { CLINIX_URL } from "@/src/lib/constants";
 
 type Product = {
   key: string;
@@ -20,7 +21,7 @@ const PRODUCTS: Product[] = [
     name: "Clinix PH — Dental & Medical",
     desc: "Multi-branch clinic management: records, scheduling, POS, inventory and role-based access for owners, practitioners and staff.",
     live: true,
-    href: "https://clinix.databridgesol.space",
+    href: CLINIX_URL,
   },
   {
     key: "pos",
@@ -284,7 +285,7 @@ export default function CanvasLanding() {
       <section className="db-cta-section">
         <h2>Not sure which module fits? Start with what&apos;s live.</h2>
         <div className="db-cta-actions">
-          <a href="https://clinix.databridgesol.space" className="btn-jade">
+          <a href={CLINIX_URL} className="btn-jade">
             Explore Clinix PH →
           </a>
           <a href="#products" className="btn-ghost">

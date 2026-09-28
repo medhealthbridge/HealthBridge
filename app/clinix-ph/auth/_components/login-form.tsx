@@ -8,6 +8,7 @@ import { TextField } from "@/src/components/form-controls";
 import { CLINIX_ROUTES } from "@/src/lib/constants";
 import type { SocialProvider } from "@/src/lib/constants";
 import { AUTH_ROLE_COPY, type AuthRole } from "../_data";
+import { ResendVerification } from "./resend-verification";
 import { RoleLinks } from "./role-links";
 import { SocialSignIn } from "./social-sign-in";
 import { SwitchModePrompt } from "./switch-mode-prompt";
@@ -67,6 +68,8 @@ export function LoginForm({ socialProviders, role, onSwitch }: LoginFormProps) {
           {pending ? "Logging in…" : "Log in"}
         </Button>
       </form>
+      {/* A form of its own — it can't nest inside the login form. */}
+      {state.needsVerification && <ResendVerification email={state.values?.email ?? ""} />}
 
       <SwitchModePrompt prompt="No account?" action="Sign up" onSwitch={onSwitch} />
       <RoleLinks role={role} />
