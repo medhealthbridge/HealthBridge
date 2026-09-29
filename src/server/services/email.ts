@@ -25,7 +25,17 @@ async function sendEmail(email: Email) {
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from, ...email }),
   });
-  if (!response.ok) throw new Error(`Email provider rejected the message (HTTP ${response.status}).`);
+  if (!response.ok) {
+    // Resend explains itself in the body — an unverified sender domain, a
+    // test sender writing to someone other than the account owner, a bad key.
+    // The status code alone sends you to the dashboard to find out which, so
+    // keep the reason. It describes the rejection, never the message we sent,
+    // so no verification or reset token can ride along.
+    const reason = await response.text().catch(() => "");
+    throw new Error(
+      `Email provider rejected the message (HTTP ${response.status})${reason ? `: ${reason.slice(0, 300)}` : "."}`,
+    );
+  }
 }
 
 export async function sendVerificationEmail(recipient: { name: string; email: string }, url: string) {
