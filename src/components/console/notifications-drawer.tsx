@@ -11,6 +11,9 @@ export function NotificationsDrawer({ open, onClose, notifications }: Notificati
   return (
     <ConsoleDialog open={open} onClose={onClose} label="Notifications" className="md:w-[370px]">
       <DrawerHeader title="Notifications" onClose={onClose} />
+      {notifications.length === 0 && (
+        <p className="px-4 py-6 text-[13px] text-console-muted">You&rsquo;re all caught up. Alerts about your clinic will show up here.</p>
+      )}
       <ul className="flex-1 overflow-y-auto">
         {notifications.map((item) => (
           <li key={item.title} className="flex items-start gap-2.5 border-b border-console-line px-4 py-3.5">

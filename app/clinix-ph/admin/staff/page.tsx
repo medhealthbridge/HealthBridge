@@ -1,30 +1,25 @@
 import type { Metadata } from "next";
-import { requireClinicOwner } from "@/src/server/auth";
+import { requireWorkspace } from "@/src/server/auth";
 import { PageHeader } from "@/src/components/console/page-header";
-import { StaffTable } from "@/src/components/console/staff-table";
-import { ToastButton } from "@/src/components/console/toast";
-import { CLINIX_STAFF } from "@/src/lib/mock-data/clinix-admin";
-import { ImportButton } from "../_components/import-button";
+import { listClinicPeople } from "@/src/server/services/workspace";
+import { PeopleTable } from "./_components/people-table";
 
 export const metadata: Metadata = { title: "Staff & roles" };
 
 export default async function StaffPage() {
-  await requireClinicOwner();
+  const { workspace } = await requireWorkspace();
+  const people = (await Promise.all(workspace.clinics.map((clinic) => listClinicPeople(clinic.id)))).flat();
+  const branchNames = Object.fromEntries(workspace.clinics.map((clinic) => [clinic.id, clinic.name]));
 
   return (
     <>
-      <PageHeader
-        title="Staff & roles"
-        actions={
-          <>
-            <ImportButton kind="staff" />
-            <ToastButton variant="primary" message="Invite sheet opened">
-              + Invite staff
-            </ToastButton>
-          </>
-        }
-      />
-      <StaffTable staff={CLINIX_STAFF} detailLabel="Branch" deactivatedSuffix=" deactivated — records retained" />
+      <PageHeader title="Staff & roles" description="Everyone with access to your clinics." />
+      <PeopleTable people={people} branchNames={branchNames} />
+      {people.some((person) => person.state === "invited") && (
+        <p className="text-xs text-console-muted">
+          Invites are saved but not emailed yet, so an invited person can&rsquo;t join until sending is built.
+        </p>
+      )}
     </>
   );
 }

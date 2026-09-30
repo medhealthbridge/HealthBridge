@@ -9,9 +9,11 @@ import { cache } from "react";
 import { db } from "./db/client";
 import { account, session, user, verification } from "./db/schema";
 import { isPlatformAdmin, listActiveMemberships } from "./services/access";
+import { getOwnerWorkspace } from "./services/workspace";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./services/email";
 import { consumeRateLimit, type RateLimitRule } from "./services/rate-limit";
-import { CLINIX_ROUTES, SOCIAL_PROVIDERS } from "@/src/lib/constants";
+import { clinicSubdomainsEnabled } from "@/src/lib/clinic-host";
+import { CLINIC_DOMAIN_SUFFIX, CLINIX_ROUTES, SOCIAL_PROVIDERS } from "@/src/lib/constants";
 
 // A provider is offered only when both of its env vars are set, so the auth
 // page never renders a button that can't complete (see .env.example).
@@ -106,6 +108,14 @@ export const auth = betterAuth({
     },
   },
   socialProviders,
+  // Log in on clinix.databridgesol.space, land on <clinic>.databridgesol.space:
+  // the session cookie has to be valid on both, so it is scoped to the shared
+  // parent domain. Vercel preview URLs live on another domain, where a cookie
+  // for this one would be rejected outright, hence the flag.
+  ...(clinicSubdomainsEnabled() && {
+    advanced: { crossSubDomainCookies: { enabled: true, domain: CLINIC_DOMAIN_SUFFIX } },
+    trustedOrigins: [`https://*${CLINIC_DOMAIN_SUFFIX}`],
+  }),
   hooks: { before: rateLimitAuthEndpoints },
   // Lets Server Actions that call auth.api.* set the session cookie.
   plugins: [nextCookies()],
@@ -145,6 +155,15 @@ export async function requireClinicOwner() {
   if (clinicIds.length === 0) redirect(CLINIX_ROUTES.onboarding);
   return { user: current, clinicIds };
 }
+
+/**
+ * The owner plus the workspace onboarding created, read once per request no
+ * matter how many layouts and pages ask for it.
+ */
+export const requireWorkspace = cache(async () => {
+  const { user, clinicIds } = await requireClinicOwner();
+  return { user, workspace: await getOwnerWorkspace(clinicIds) };
+});
 
 /** Signed-in user who hasn't created a workspace yet; owners go to their console. */
 export async function requireOnboardingPending() {

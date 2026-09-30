@@ -3,11 +3,10 @@
 import { useId, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { consoleButtonClass } from "@/src/components/console/console-button";
-import { BRANCHES } from "@/src/lib/mock-data/clinix-admin";
 import { useActiveBranch } from "./branch-context";
 
 export function BranchSwitcher() {
-  const { branch, setBranchKey } = useActiveBranch();
+  const { branches, branch, setBranchKey } = useActiveBranch();
   const [open, setOpen] = useState(false);
   const listId = useId();
 
@@ -26,7 +25,7 @@ export function BranchSwitcher() {
       </button>
       {open && (
         <ul id={listId} className="mt-1 rounded-xl border border-console-line bg-console-canvas p-1">
-          {BRANCHES.map((option) => {
+          {branches.map((option) => {
             const current = option.key === branch.key;
             return (
               <li key={option.key}>

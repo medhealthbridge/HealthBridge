@@ -4,6 +4,7 @@ import type {
   SPECIALTIES,
 } from "@/src/lib/constants";
 import type { OnboardingInput } from "@/src/lib/schemas/onboarding";
+import { FONT_PAIRING_LABELS, SPECIALTY_LABELS } from "@/src/lib/clinic-labels";
 
 export const STEP_LABELS = ["Clinic", "Vertical", "Branch", "Branding", "Staff", "Go live"] as const;
 export const GO_LIVE_STEP = STEP_LABELS.length - 1;
@@ -26,22 +27,22 @@ export const SPECIALTY_OPTIONS: Record<
   { label: string; summary: string; fields: readonly string[] }
 > = {
   dental: {
-    label: "Dental",
+    label: SPECIALTY_LABELS.dental,
     summary: "Odontogram, procedures",
     fields: ["Tooth / odontogram reference", "Dental arch (upper/lower)", "Material used (consumables)"],
   },
   vet: {
-    label: "Veterinary",
+    label: SPECIALTY_LABELS.vet,
     summary: "Pet profiles, vaccines",
     fields: ["Species / breed", "Weight", "Vaccine due date"],
   },
   eye: {
-    label: "Eye care",
+    label: SPECIALTY_LABELS.eye,
     summary: "Refraction, lens fitting",
     fields: ["OD / OS refraction", "Lens type", "Frame stock reference"],
   },
   derma: {
-    label: "Skin / Derma",
+    label: SPECIALTY_LABELS.derma,
     summary: "Treatment packages",
     fields: ["Skin type", "Package sessions remaining", "Product batch no."],
   },
@@ -63,10 +64,10 @@ export const FONT_OPTIONS: Record<
   (typeof FONT_PAIRINGS)[number],
   { name: string; sample: string; headingFont?: string }
 > = {
-  modern: { name: "Modern", sample: "Plus Jakarta Sans + Inter" },
-  classic: { name: "Classic", sample: "Georgia + Inter", headingFont: "Georgia, serif" },
-  friendly: { name: "Friendly", sample: "Poppins + Inter", headingFont: "var(--font-poppins)" },
-  luxury: { name: "Luxury", sample: "Playfair Display + Inter", headingFont: "var(--font-playfair)" },
+  modern: { name: FONT_PAIRING_LABELS.modern, sample: "Plus Jakarta Sans + Inter" },
+  classic: { name: FONT_PAIRING_LABELS.classic, sample: "Georgia + Inter", headingFont: "Georgia, serif" },
+  friendly: { name: FONT_PAIRING_LABELS.friendly, sample: "Poppins + Inter", headingFont: "var(--font-poppins)" },
+  luxury: { name: FONT_PAIRING_LABELS.luxury, sample: "Playfair Display + Inter", headingFont: "var(--font-playfair)" },
 };
 
 export const STAFF_ROLE_OPTIONS: readonly {

@@ -139,3 +139,10 @@ export async function resetPasswordAction(
 
   return { done: true };
 }
+
+/** Ends the session (better-auth clears the cookie) and returns to the log-in page. */
+export async function signOutAction() {
+  await auth.api.signOut({ headers: await headers() });
+  revalidatePath(CLINIX_ROUTES.landing, "layout");
+  redirect(CLINIX_ROUTES.auth);
+}

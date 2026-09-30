@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsLeft, ChevronsRight, Moon, Sun } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LogOut, Moon, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import type { ConsoleTheme } from "@/src/lib/constants";
 import type { ConsoleBrand, ConsoleUser, NavGroup } from "@/src/types/console";
+import { SignOutButton } from "@/src/components/sign-out-button";
 import { ConsoleIcon } from "./console-icon";
 import { consoleButtonClass } from "./console-button";
 
@@ -106,6 +107,9 @@ export function ConsoleSidebar({ brand, user, nav, collapsed, onToggleCollapsed,
       >
         <ThemeGlyph aria-hidden="true" className="size-4" />
       </button>
+      <SignOutButton aria-label="Log out" className={consoleButtonClass("secondary", "sm", "w-11 shrink-0 md:hidden")}>
+        <LogOut aria-hidden="true" className="size-4" />
+      </SignOutButton>
 
       <div className="hidden shrink-0 flex-col gap-2 border-t border-console-line pt-2.5 md:flex">
         <div className="flex items-center gap-2 px-1">
@@ -140,6 +144,13 @@ export function ConsoleSidebar({ brand, user, nav, collapsed, onToggleCollapsed,
             {collapsed ? <ChevronsRight aria-hidden="true" className="size-3.5" /> : <ChevronsLeft aria-hidden="true" className="size-3.5" />}
           </button>
         </div>
+        <SignOutButton
+          aria-label={collapsed ? "Log out" : undefined}
+          className={consoleButtonClass("secondary", "sm", "w-full")}
+        >
+          <LogOut aria-hidden="true" className="size-3.5" />
+          {!collapsed && "Log out"}
+        </SignOutButton>
       </div>
     </aside>
   );

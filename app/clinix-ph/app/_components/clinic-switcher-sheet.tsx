@@ -1,6 +1,7 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, LogOut } from "lucide-react";
+import { SignOutButton } from "@/src/components/sign-out-button";
 import { BRANCHES, CLINIX_APP_ACCOUNT, HQ_PORTAL_NAME, HQ_PORTAL_URL } from "@/src/lib/mock-data/clinix-app";
 import type { PortalKey } from "@/src/types/clinix-app";
 import { Kicker } from "./kicker";
@@ -50,6 +51,10 @@ export function ClinicSwitcherSheet({ open, active, includeHq, onPick, onClose }
             </li>
           ))}
         </ul>
+        <SignOutButton className="flex min-h-11 w-full cursor-pointer items-center gap-2 border-t border-slate-200 pt-2.5 text-left text-[13px] font-semibold text-slate-700 transition-colors duration-150 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand">
+          <LogOut aria-hidden="true" className="size-4 text-brand" />
+          Log out
+        </SignOutButton>
       </div>
     </div>
   );
