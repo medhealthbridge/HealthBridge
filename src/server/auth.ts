@@ -9,10 +9,11 @@ import { cache } from "react";
 import { db } from "./db/client";
 import { account, session, user, verification } from "./db/schema";
 import { isPlatformAdmin, listActiveMemberships } from "./services/access";
+import { describeStaffClinics } from "./services/clinic-app";
 import { getOwnerWorkspace } from "./services/workspace";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./services/email";
 import { consumeRateLimit, type RateLimitRule } from "./services/rate-limit";
-import { clinicSubdomainsEnabled } from "@/src/lib/clinic-host";
+import { clinicSubdomainsEnabled, tenantSlugFromHost } from "@/src/lib/clinic-host";
 import { CLINIC_DOMAIN_SUFFIX, CLINIX_ROUTES, SOCIAL_PROVIDERS } from "@/src/lib/constants";
 
 // A provider is offered only when both of its env vars are set, so the auth
@@ -152,7 +153,10 @@ export async function requirePlatformAdmin() {
 export async function requireClinicOwner() {
   const current = await requireUser();
   const clinicIds = await ownedClinicIds(current.id);
-  if (clinicIds.length === 0) redirect(CLINIX_ROUTES.onboarding);
+  if (clinicIds.length === 0) {
+    // Practitioners and assistants have no console; their home is the clinic app.
+    redirect((await getMemberships(current.id)).length > 0 ? CLINIX_ROUTES.app : CLINIX_ROUTES.onboarding);
+  }
   return { user: current, clinicIds };
 }
 
@@ -163,6 +167,29 @@ export async function requireClinicOwner() {
 export const requireWorkspace = cache(async () => {
   const { user, clinicIds } = await requireClinicOwner();
   return { user, workspace: await getOwnerWorkspace(clinicIds) };
+});
+
+/**
+ * Any active staff member (owner, practitioner or assistant) with the clinics
+ * they work at and the role they hold at each. Not on any clinic → onboarding.
+ */
+export const requireStaff = cache(async () => {
+  const current = await requireUser();
+  const memberships = await getMemberships(current.id);
+  if (memberships.length === 0) redirect(CLINIX_ROUTES.onboarding);
+  return { user: current, clinics: await describeStaffClinics(memberships) };
+});
+
+/**
+ * The clinic this request is for: the subdomain's clinic when on one, else the
+ * user's first. A subdomain they don't work at is a 404, never a fallback.
+ */
+export const requireActiveClinic = cache(async () => {
+  const { user, clinics } = await requireStaff();
+  const slug = tenantSlugFromHost((await headers()).get("host"));
+  const clinic = slug ? clinics.find((candidate) => candidate.subdomain === slug) : clinics[0];
+  if (!clinic) notFound();
+  return { user, clinic, clinics };
 });
 
 /** Signed-in user who hasn't created a workspace yet; owners go to their console. */

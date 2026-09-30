@@ -37,7 +37,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
 
   try {
     await auth.api.signInEmail({
-      body: { ...parsed.data, callbackURL: CLINIX_ROUTES.admin },
+      body: { ...parsed.data, callbackURL: CLINIX_ROUTES.app },
       headers: await headers(),
     });
   } catch (error) {
@@ -51,7 +51,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   }
 
   revalidatePath(CLINIX_ROUTES.landing, "layout");
-  redirect(CLINIX_ROUTES.admin);
+  redirect(CLINIX_ROUTES.app);
 }
 
 export async function signupAction(_prev: SignupState, formData: FormData): Promise<SignupState> {
@@ -85,7 +85,7 @@ export async function socialSignInAction(formData: FormData) {
   const { url } = await auth.api.signInSocial({
     body: {
       provider,
-      callbackURL: intent === "signup" ? CLINIX_ROUTES.onboarding : CLINIX_ROUTES.admin,
+      callbackURL: intent === "signup" ? CLINIX_ROUTES.onboarding : CLINIX_ROUTES.app,
       newUserCallbackURL: CLINIX_ROUTES.onboarding,
     },
     headers: await headers(),

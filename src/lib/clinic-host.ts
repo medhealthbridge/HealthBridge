@@ -32,3 +32,8 @@ export function tenantSlugFromHost(host: string | null | undefined) {
 export function clinicConsoleUrl(subdomain: string) {
   return `https://${subdomain}${CLINIC_DOMAIN_SUFFIX}${CLINIX_ROUTES.admin}`;
 }
+
+/** Origin of a clinic's own host, or "" (same host) while subdomains are off. */
+export function clinicAppUrl(subdomain: string) {
+  return clinicSubdomainsEnabled() ? `https://${subdomain}${CLINIC_DOMAIN_SUFFIX}` : "";
+}
