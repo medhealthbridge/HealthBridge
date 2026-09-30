@@ -1,18 +1,8 @@
+import { composePasswordResetEmail, composeVerificationEmail } from "./email-templates";
+
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 type Email = { to: string; subject: string; text: string; html: string };
-
-const HTML_ESCAPES: Record<string, string> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-};
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
-}
 
 /** Sends through Resend's HTTP API. Errors never include the message body, which may hold a token. */
 async function sendEmail(email: Email) {
@@ -39,19 +29,9 @@ async function sendEmail(email: Email) {
 }
 
 export async function sendVerificationEmail(recipient: { name: string; email: string }, url: string) {
-  await sendEmail({
-    to: recipient.email,
-    subject: "Verify your email for Clinix PH",
-    text: `Hi ${recipient.name},\n\nConfirm your email to finish setting up your Clinix PH account:\n${url}\n\nIf you didn't sign up, you can ignore this email.`,
-    html: `<p>Hi ${escapeHtml(recipient.name)},</p><p>Confirm your email to finish setting up your Clinix PH account:</p><p><a href="${escapeHtml(url)}">Verify email</a></p><p>If you didn't sign up, you can ignore this email.</p>`,
-  });
+  await sendEmail({ to: recipient.email, ...composeVerificationEmail(recipient, url) });
 }
 
 export async function sendPasswordResetEmail(recipient: { name: string; email: string }, url: string) {
-  await sendEmail({
-    to: recipient.email,
-    subject: "Reset your Clinix PH password",
-    text: `Hi ${recipient.name},\n\nOpen this link to set a new password:\n${url}\n\nThe link expires in one hour. If you didn't ask for it, you can ignore this email — your password stays as it is.`,
-    html: `<p>Hi ${escapeHtml(recipient.name)},</p><p>Open this link to set a new password:</p><p><a href="${escapeHtml(url)}">Reset password</a></p><p>The link expires in one hour. If you didn't ask for it, you can ignore this email — your password stays as it is.</p>`,
-  });
+  await sendEmail({ to: recipient.email, ...composePasswordResetEmail(recipient, url) });
 }
