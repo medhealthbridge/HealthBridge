@@ -1,28 +1,39 @@
 import { Kicker, Panel } from "@/src/components/console/panel";
-import { ToastButton } from "@/src/components/console/toast";
-import { CURRENT_PLAN } from "@/src/lib/mock-data/clinix-admin";
+import type { WorkspaceSubscription } from "@/src/server/services/workspace";
 
-export function CurrentPlanCard() {
+const STATUS_LABEL: Record<string, string> = {
+  trialing: "Free trial",
+  active: "Active",
+  past_due: "Past due",
+  masterlocked: "Locked",
+  canceled: "Canceled",
+};
+
+const dateFormat = new Intl.DateTimeFormat("en-PH", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Manila" });
+
+type CurrentPlanCardProps = { subscription: WorkspaceSubscription; clinicsUsed: number };
+
+export function CurrentPlanCard({ subscription, clinicsUsed }: CurrentPlanCardProps) {
+  const { trialDaysLeft, trialEndsAt } = subscription;
+  const tier = subscription.tier.replace("tier_", "Tier ");
+
   return (
     <Panel className="flex flex-col gap-2 border-console-accent/45 p-4">
       <Kicker>Current plan</Kicker>
-      <span className="font-data text-2xl font-semibold text-console-accent">{CURRENT_PLAN.name}</span>
+      <span className="font-data text-2xl font-semibold text-console-accent">{tier}</span>
       <span className="text-xs text-console-muted">
-        {CURRENT_PLAN.price} · renews {CURRENT_PLAN.renews}
+        {STATUS_LABEL[subscription.status] ?? subscription.status}
+        {trialDaysLeft !== null && trialEndsAt &&
+          ` · ${trialDaysLeft} ${trialDaysLeft === 1 ? "day" : "days"} left, ends ${dateFormat.format(trialEndsAt)}`}
       </span>
       <dl className="flex flex-col gap-2 border-t border-console-line pt-2 text-xs">
         <div className="flex items-baseline justify-between gap-2">
           <dt className="text-console-subtle">Branches used</dt>
-          <dd className="font-data">{CURRENT_PLAN.branches}</dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-2">
-          <dt className="text-console-subtle">Staff seats</dt>
-          <dd className="font-data">{CURRENT_PLAN.seats}</dd>
+          <dd className="font-data">
+            {clinicsUsed} of {subscription.clinicSlotLimit}
+          </dd>
         </div>
       </dl>
-      <ToastButton variant="primary" message="Opening plan comparison" className="mt-1.5">
-        Upgrade plan
-      </ToastButton>
     </Panel>
   );
 }

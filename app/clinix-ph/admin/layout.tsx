@@ -1,42 +1,75 @@
 import type { Metadata } from "next";
-import { requireClinicOwner } from "@/src/server/auth";
+import { headers } from "next/headers";
+import { notFound, redirect } from "next/navigation";
+import { requireWorkspace } from "@/src/server/auth";
 import { ConsoleShell } from "@/src/components/console/console-shell";
 import { readConsoleTheme } from "@/src/components/console/read-console-theme";
+import { clinicConsoleUrl, clinicSubdomainsEnabled, tenantSlugFromHost } from "@/src/lib/clinic-host";
+import { CLINIC_DOMAIN_SUFFIX } from "@/src/lib/constants";
 import {
-  CLINIX_ADMIN_BRAND,
   CLINIX_ADMIN_NAV,
-  CLINIX_ADMIN_USER,
-  CLINIX_NOTIFICATIONS,
   CLINIX_QUICK_ACTIONS,
   CLINIX_SEARCH_PLACEHOLDER,
 } from "@/src/lib/mock-data/clinix-admin";
-import { BranchProvider } from "./_components/branch-context";
-import { ClinicAppLink } from "./_components/clinic-app-link";
+import { initialsOf } from "@/src/lib/utils";
+import { BranchProvider, type ConsoleBranch } from "./_components/branch-context";
 import { BranchSwitcher } from "./_components/branch-switcher";
+import { ClinicAppLink } from "./_components/clinic-app-link";
+import { SampleDataNotice } from "./_components/sample-data-notice";
 
 export const metadata: Metadata = {
   title: { template: "%s · Clinix PH", default: "Owner console · Clinix PH" },
   robots: { index: false },
 };
 
+const ALL_BRANCHES: ConsoleBranch = { key: "all", name: "All branches", initial: "HQ" };
+
+// The demo nav carries invented counts ("3 low-stock items"). On a real clinic
+// those would read as real alerts, so the badges are dropped until they are.
+const NAV = CLINIX_ADMIN_NAV.map((group) => ({
+  ...group,
+  items: group.items.map((item) => ({ href: item.href, label: item.label, icon: item.icon })),
+}));
+
 // Each page repeats this check: a layout isn't re-rendered on client
 // navigation, so it can't be the only gate.
 export default async function ClinixAdminLayout({ children }: { children: React.ReactNode }) {
-  await requireClinicOwner();
+  const { user, workspace } = await requireWorkspace();
+  const host = (await headers()).get("host");
+  const slug = tenantSlugFromHost(host);
+
+  // A clinic's subdomain is only for that clinic's owner. Rewriting `/` to the
+  // console (proxy.ts) is routing, not authorization — this is the check.
+  if (slug && !workspace.clinics.some((clinic) => clinic.subdomain === slug)) notFound();
+
+  // Logged in on the product host with one clinic: go straight to it. Only on
+  // the shared domain — a preview URL or localhost has no subdomain to go to.
+  const onSharedDomain = Boolean(host?.split(":")[0].endsWith(CLINIC_DOMAIN_SUFFIX));
+  if (!slug && clinicSubdomainsEnabled() && onSharedDomain && workspace.clinics.length === 1) {
+    redirect(clinicConsoleUrl(workspace.clinics[0].subdomain));
+  }
+
+  const branches: ConsoleBranch[] = workspace.clinics.map((clinic) => ({
+    key: clinic.subdomain,
+    name: clinic.name,
+    initial: initialsOf(clinic.name),
+  }));
+  if (branches.length > 1) branches.push(ALL_BRANCHES);
 
   return (
-    <BranchProvider>
+    <BranchProvider branches={branches} initialKey={slug ?? branches[0].key}>
       <ConsoleShell
         initialTheme={await readConsoleTheme()}
-        brand={CLINIX_ADMIN_BRAND}
-        user={CLINIX_ADMIN_USER}
-        nav={CLINIX_ADMIN_NAV}
+        brand={{ initial: initialsOf(workspace.companyName).slice(0, 1), name: workspace.companyName, kicker: "Owner console" }}
+        user={{ initials: initialsOf(user.name), name: user.name }}
+        nav={NAV}
         searchPlaceholder={CLINIX_SEARCH_PLACEHOLDER}
         quickActions={CLINIX_QUICK_ACTIONS}
-        notifications={CLINIX_NOTIFICATIONS}
+        notifications={[]}
         sidebarSlot={<BranchSwitcher />}
         topbarSlot={<ClinicAppLink />}
       >
+        <SampleDataNotice />
         {children}
       </ConsoleShell>
     </BranchProvider>

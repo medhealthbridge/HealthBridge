@@ -1,19 +1,10 @@
-import type { Metadata } from "next";
-import { requireUser } from "@/src/server/auth";
-import { PhoneApp } from "./_components/phone-app";
+import { redirect } from "next/navigation";
+import { requireActiveClinic } from "@/src/server/auth";
+import { roleHome } from "@/src/lib/clinic-app-nav";
+import { CLINIX_ROUTES } from "@/src/lib/constants";
 
-export const metadata: Metadata = {
-  title: "Clinic app · Clinix PH",
-  description: "Today's floor work — queue, patients, charging and bookings.",
-  robots: { index: false },
-};
-
-/**
- * The phone app. Signed in and verified is the whole gate here: the screens
- * run on demo data, and the real per-clinic authorization lives with the
- * services that will back them (see `requireClinicOwner` for the console).
- */
-export default async function ClinixPhoneAppPage() {
-  await requireUser();
-  return <PhoneApp />;
+/** Post-login router: each role lands on its own route. Owners land in the console. */
+export default async function ClinicAppIndex() {
+  const { clinic } = await requireActiveClinic();
+  redirect(clinic.role === "owner" ? CLINIX_ROUTES.admin : roleHome(clinic.role));
 }

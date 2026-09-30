@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition, type CSSProperties, type FormEvent } from "react";
-import Link from "next/link";
 import { z } from "zod";
 import { completeOnboardingAction } from "@/src/server/actions/onboarding";
 import { Button, buttonClassName } from "@/src/components/button";
@@ -29,6 +28,7 @@ export function OnboardingWizard() {
   const [errors, setErrors] = useState<StepProps["errors"]>({});
   const [message, setMessage] = useState<string>();
   const [pending, startTransition] = useTransition();
+  const [destination, setDestination] = useState<string>(CLINIX_ROUTES.admin);
 
   const onChange = (patch: Partial<OnboardingInput>) => setValues((prev) => ({ ...prev, ...patch }));
 
@@ -47,6 +47,7 @@ export function OnboardingWizard() {
     startTransition(async () => {
       const result = await completeOnboardingAction(candidate);
       if (result.completed) {
+        setDestination(result.redirectTo ?? CLINIX_ROUTES.admin);
         setStep(GO_LIVE_STEP);
         return;
       }
@@ -111,9 +112,11 @@ export function OnboardingWizard() {
           {step === GO_LIVE_STEP ? (
             <>
               <span />
-              <Link href={CLINIX_ROUTES.admin} className={buttonClassName()}>
-                Finish
-              </Link>
+              {/* A plain anchor: the destination may be another origin, and the
+                  console should load fresh under the session cookie either way. */}
+              <a href={destination} className={buttonClassName()}>
+                Open my console
+              </a>
             </>
           ) : (
             <>

@@ -9,11 +9,16 @@ import {
   WorkspaceExistsError,
 } from "@/src/server/services/onboarding";
 import { consumeRateLimit } from "@/src/server/services/rate-limit";
+import { clinicConsoleUrl, clinicSubdomainsEnabled } from "@/src/lib/clinic-host";
 import { CLINIX_ROUTES } from "@/src/lib/constants";
 import { onboardingSchema, type OnboardingField } from "@/src/lib/schemas/onboarding";
 import type { FormState } from "@/src/types/form-state";
 
-export type OnboardingState = FormState<OnboardingField> & { completed?: boolean };
+export type OnboardingState = FormState<OnboardingField> & {
+  completed?: boolean;
+  /** The new clinic's console: its own subdomain when those are live, else this host. */
+  redirectTo?: string;
+};
 
 const ONBOARDING_RATE_LIMIT = { max: 10, windowSeconds: 60 * 60 };
 
@@ -26,8 +31,9 @@ export async function completeOnboardingAction(values: unknown): Promise<Onboard
   const parsed = onboardingSchema.safeParse(values);
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
 
+  let workspace;
   try {
-    await createClinicWorkspace(owner.id, parsed.data);
+    workspace = await createClinicWorkspace(owner.id, parsed.data);
   } catch (error) {
     if (error instanceof SubdomainTakenError) {
       return { fieldErrors: { subdomain: ["That subdomain is already taken. Try another."] } };
@@ -41,5 +47,8 @@ export async function completeOnboardingAction(values: unknown): Promise<Onboard
   // The console is what shows the new workspace. Revalidating only it keeps
   // this page (and the wizard's go-live step) from re-rendering mid-flow.
   revalidatePath(CLINIX_ROUTES.admin, "layout");
-  return { completed: true };
+  return {
+    completed: true,
+    redirectTo: clinicSubdomainsEnabled() ? clinicConsoleUrl(workspace.subdomain) : CLINIX_ROUTES.admin,
+  };
 }

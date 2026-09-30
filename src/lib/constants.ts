@@ -23,20 +23,50 @@ export const TRIAL_DAYS = 15;
 export const VERIFICATION_RESEND_COOLDOWN_SECONDS = 60;
 export const STAFF_INVITE_TTL_DAYS = 7;
 
-export const CLINIC_DOMAIN_SUFFIX = ".clinix.ph";
+// Tenants live at <subdomain>.databridgesol.space (docs/healthbridge-plan.md, section 1).
+export const CLINIC_DOMAIN_SUFFIX = ".databridgesol.space";
 
-// Plan section 4: reserved words a clinic can't claim as its subdomain.
+// Plan section 4: reserved words a clinic can't claim as its subdomain. Beyond
+// the generic ones, this must hold every name already in use on the shared
+// domain: another product's host (nlminventory) and the labels Resend's DKIM
+// and bounce records live on (`resend._domainkey`, `send`) — a clinic that
+// registered one of those would be handed a hostname that is not its own.
 export const RESERVED_SUBDOMAINS = [
   "admin",
   "api",
   "app",
   "auth",
+  "billing",
+  "blog",
+  "cdn",
   "clinix",
   "dashboard",
+  "demo",
+  "dev",
+  "docs",
+  "ftp",
   "help",
+  "hq",
+  "imap",
+  "inbound",
+  "login",
   "mail",
+  "nlminventory",
+  "ns1",
+  "ns2",
+  "pop",
+  "portal",
+  "pos",
+  "register",
+  "resend",
+  "send",
+  "signup",
+  "smtp",
+  "staging",
+  "static",
   "status",
   "support",
+  "test",
   "www",
 ] as const;
 

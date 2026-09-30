@@ -1,28 +1,19 @@
 import type { Metadata } from "next";
-import { requireClinicOwner } from "@/src/server/auth";
+import { requireWorkspace } from "@/src/server/auth";
 import { PageHeader } from "@/src/components/console/page-header";
-import { CUSTOM_FIELDS } from "@/src/lib/mock-data/clinix-admin";
-import { ActiveBranchName } from "../_components/branch-context";
-import { CustomFieldsSettings } from "./_components/custom-fields-settings";
-import { VerticalCard } from "./_components/vertical-card";
+import { ClinicProfileCard } from "./_components/clinic-profile-card";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
-  await requireClinicOwner();
+  const { workspace } = await requireWorkspace();
 
   return (
     <>
-      <PageHeader
-        title="Settings"
-        description={
-          <>
-            Clinic profile and custom fields for <ActiveBranchName />.
-          </>
-        }
-      />
-      <VerticalCard />
-      <CustomFieldsSettings fields={CUSTOM_FIELDS} />
+      <PageHeader title="Settings" description="Clinic profile, as set up during onboarding." />
+      {workspace.clinics.map((clinic) => (
+        <ClinicProfileCard key={clinic.id} clinic={clinic} />
+      ))}
     </>
   );
 }

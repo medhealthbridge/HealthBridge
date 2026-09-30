@@ -15,7 +15,7 @@ export async function isPlatformAdmin(userId: string) {
 export async function listActiveMemberships(userId: string) {
   return withUser(userId, (tx) =>
     tx
-      .select({ clinicId: clinicStaff.clinicId, role: clinicStaff.role })
+      .select({ staffId: clinicStaff.id, clinicId: clinicStaff.clinicId, role: clinicStaff.role })
       .from(clinicStaff)
       .where(
         and(eq(clinicStaff.userId, userId), eq(clinicStaff.isActive, true), isNull(clinicStaff.deletedAt)),

@@ -1,16 +1,23 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { BRANCHES, type Branch } from "@/src/lib/mock-data/clinix-admin";
 
-type BranchState = { branch: Branch; setBranchKey: (key: string) => void };
+export type ConsoleBranch = { key: string; name: string; initial: string };
+
+type BranchState = {
+  branches: ConsoleBranch[];
+  branch: ConsoleBranch;
+  setBranchKey: (key: string) => void;
+};
 
 const BranchContext = createContext<BranchState | null>(null);
 
-export function BranchProvider({ children }: { children: ReactNode }) {
-  const [key, setBranchKey] = useState(BRANCHES[0].key);
-  const branch = BRANCHES.find((b) => b.key === key) ?? BRANCHES[0];
-  return <BranchContext.Provider value={{ branch, setBranchKey }}>{children}</BranchContext.Provider>;
+type BranchProviderProps = { branches: ConsoleBranch[]; initialKey: string; children: ReactNode };
+
+export function BranchProvider({ branches, initialKey, children }: BranchProviderProps) {
+  const [key, setBranchKey] = useState(initialKey);
+  const branch = branches.find((b) => b.key === key) ?? branches[0];
+  return <BranchContext.Provider value={{ branches, branch, setBranchKey }}>{children}</BranchContext.Provider>;
 }
 
 export function useActiveBranch() {
