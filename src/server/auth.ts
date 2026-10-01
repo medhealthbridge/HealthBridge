@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware, getIP } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
+import { oneTimeToken } from "better-auth/plugins/one-time-token";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { after } from "next/server";
@@ -13,7 +14,8 @@ import { describeStaffClinics } from "./services/clinic-app";
 import { getOwnerWorkspace } from "./services/workspace";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./services/email";
 import { consumeRateLimit, type RateLimitRule } from "./services/rate-limit";
-import { clinicSubdomainsEnabled, tenantSlugFromHost } from "@/src/lib/clinic-host";
+import { clinicIdForCustomDomain } from "./services/custom-domains";
+import { clinicSubdomainsEnabled, isCustomHost, productAuthUrl, tenantSlugFromHost } from "@/src/lib/clinic-host";
 import { CLINIC_DOMAIN_SUFFIX, CLINIX_ROUTES, SOCIAL_PROVIDERS } from "@/src/lib/constants";
 
 // A provider is offered only when both of its env vars are set, so the auth
@@ -133,7 +135,10 @@ export const auth = betterAuth({
   }),
   hooks: { before: rateLimitAuthEndpoints },
   // Lets Server Actions that call auth.api.* set the session cookie.
-  plugins: [nextCookies()],
+  // One-time tokens carry a session from the product host to a clinic's own
+  // domain, which can't share the subdomain cookie (see app/api/handoff).
+  // Server-initiated only, hashed at rest, and valid for a minute.
+  plugins: [oneTimeToken({ disableClientRequest: true, storeToken: "hashed", expiresIn: 1 }), nextCookies()],
 });
 
 export const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
@@ -149,7 +154,10 @@ async function ownedClinicIds(userId: string) {
 /** Signed-in user with a verified email, or a redirect to the Clinix auth page. */
 export async function requireUser() {
   const current = await getSession();
-  if (!current?.user.emailVerified) redirect(CLINIX_ROUTES.auth);
+  if (!current?.user.emailVerified) {
+    // A custom domain has no login of its own: sign in on the product host, which hands the session back.
+    redirect(isCustomHost((await headers()).get("host")) ? productAuthUrl() : CLINIX_ROUTES.auth);
+  }
   return current.user;
 }
 
@@ -200,8 +208,16 @@ export const requireStaff = cache(async () => {
  */
 export const requireActiveClinic = cache(async () => {
   const { user, clinics } = await requireStaff();
-  const slug = tenantSlugFromHost((await headers()).get("host"));
-  const clinic = slug ? clinics.find((candidate) => candidate.subdomain === slug) : clinics[0];
+  const host = (await headers()).get("host");
+  const slug = tenantSlugFromHost(host);
+  const customClinicId = !slug && host && isCustomHost(host) ? await clinicIdForCustomDomain(host) : null;
+  const clinic = slug
+    ? clinics.find((candidate) => candidate.subdomain === slug)
+    : customClinicId
+      ? clinics.find((candidate) => candidate.id === customClinicId)
+      : isCustomHost(host)
+        ? undefined
+        : clinics[0];
   if (!clinic) notFound();
   return { user, clinic, clinics };
 });

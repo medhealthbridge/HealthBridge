@@ -37,3 +37,25 @@ export function clinicConsoleUrl(subdomain: string) {
 export function clinicAppUrl(subdomain: string) {
   return clinicSubdomainsEnabled() ? `https://${subdomain}${CLINIC_DOMAIN_SUFFIX}` : "";
 }
+
+const PRODUCT_AUTH_ORIGIN = `https://clinix${CLINIC_DOMAIN_SUFFIX}`;
+
+/** Login always happens here; a custom domain hands the session over after it. */
+export function productAuthUrl() {
+  return `${PRODUCT_AUTH_ORIGIN}${CLINIX_ROUTES.auth}`;
+}
+
+/**
+ * A host that is none of ours: not on the shared suffix, not a Vercel preview,
+ * not localhost. Only meaningful with subdomains on (production), where a clinic
+ * can own its own domain; elsewhere nothing is custom.
+ */
+export function isCustomHost(host: string | null | undefined) {
+  if (!host || !clinicSubdomainsEnabled()) return false;
+  const hostname = host.split(":")[0].toLowerCase();
+  return !(
+    hostname === "localhost" ||
+    hostname.endsWith(CLINIC_DOMAIN_SUFFIX) ||
+    hostname.endsWith(".vercel.app")
+  );
+}

@@ -4,8 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { requireWorkspace } from "@/src/server/auth";
 import { ConsoleShell } from "@/src/components/console/console-shell";
 import { readConsoleTheme } from "@/src/components/console/read-console-theme";
-import { clinicConsoleUrl, clinicSubdomainsEnabled, tenantSlugFromHost } from "@/src/lib/clinic-host";
-import { CLINIC_DOMAIN_SUFFIX } from "@/src/lib/constants";
+import { clinicConsoleUrl, clinicSubdomainsEnabled, isCustomHost, tenantSlugFromHost } from "@/src/lib/clinic-host";
+import { clinicIdForCustomDomain, customDomainOf } from "@/src/server/services/custom-domains";
+import { CLINIC_DOMAIN_SUFFIX, CLINIX_ROUTES } from "@/src/lib/constants";
 import {
   CLINIX_ADMIN_NAV,
   CLINIX_QUICK_ACTIONS,
@@ -42,11 +43,21 @@ export default async function ClinixAdminLayout({ children }: { children: React.
   // console (proxy.ts) is routing, not authorization — this is the check.
   if (slug && !workspace.clinics.some((clinic) => clinic.subdomain === slug)) notFound();
 
+  // The same check for a clinic's own domain, which isn't on the shared suffix.
+  let customClinic = null;
+  if (!slug && isCustomHost(host)) {
+    const clinicId = host ? await clinicIdForCustomDomain(host) : null;
+    customClinic = workspace.clinics.find((clinic) => clinic.id === clinicId) ?? null;
+    if (!customClinic) notFound();
+  }
+
   // Logged in on the product host with one clinic: go straight to it. Only on
   // the shared domain — a preview URL or localhost has no subdomain to go to.
   const onSharedDomain = Boolean(host?.split(":")[0].endsWith(CLINIC_DOMAIN_SUFFIX));
   if (!slug && clinicSubdomainsEnabled() && onSharedDomain && workspace.clinics.length === 1) {
-    redirect(clinicConsoleUrl(workspace.clinics[0].subdomain));
+    // A clinic with its own domain lands there, carrying the session across.
+    const ownDomain = await customDomainOf(workspace.clinics[0].id);
+    redirect(ownDomain ? CLINIX_ROUTES.openDomain : clinicConsoleUrl(workspace.clinics[0].subdomain));
   }
 
   const branches: ConsoleBranch[] = workspace.clinics.map((clinic) => ({
@@ -57,7 +68,7 @@ export default async function ClinixAdminLayout({ children }: { children: React.
   if (branches.length > 1) branches.push(ALL_BRANCHES);
 
   return (
-    <BranchProvider branches={branches} initialKey={slug ?? branches[0].key}>
+    <BranchProvider branches={branches} initialKey={slug ?? customClinic?.subdomain ?? branches[0].key}>
       <ConsoleShell
         initialTheme={await readConsoleTheme()}
         brand={{ initial: initialsOf(workspace.companyName).slice(0, 1), name: workspace.companyName, kicker: "Owner console" }}

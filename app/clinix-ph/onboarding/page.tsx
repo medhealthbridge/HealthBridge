@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, Poppins } from "next/font/google";
 import { requireOnboardingPending } from "@/src/server/auth";
 import { SignOutButton } from "@/src/components/sign-out-button";
+import { domainOfferConfig } from "@/src/server/services/domain-offer";
 import { OnboardingWizard } from "./_components/onboarding-wizard";
 
 // Heading options for the branding step's font pairing; not needed up front.
@@ -37,7 +38,7 @@ export default async function ClinixOnboardingPage() {
           Log out
         </SignOutButton>
       </p>
-      <OnboardingWizard />
+      <OnboardingWizard domainOffer={domainOfferConfig()} />
     </main>
   );
 }

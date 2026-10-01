@@ -5,9 +5,12 @@ import {
   integer,
   timestamp,
   jsonb,
+  numeric,
   index,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { user } from "./auth";
 
 /**
@@ -91,5 +94,44 @@ export const domainLookups = pgTable(
   },
   (table) => ({
     clinicIdx: index("domain_lookups_clinic_id_idx").on(table.clinicId),
+  }),
+);
+
+/**
+ * One purchase made at the end of onboarding: the first month of the plan plus
+ * a custom domain, paid in a single PHP charge. The domain is bought only after
+ * the payment webhook confirms the money (`pending_payment` → `paid` →
+ * `purchasing` → `active`), and `status` is only ever moved with a guarded
+ * UPDATE so a repeated webhook can't buy the domain twice. Amounts are
+ * centavos; `vercelPriceUsd` is the quote the charge was built from and the
+ * `expectedPrice` the registrar must still honour at purchase time.
+ */
+export const domainOrders = pgTable(
+  "domain_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id").notNull().references(() => accounts.id),
+    clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
+    domain: text("domain").notNull(),
+    years: integer("years").notNull().default(1),
+    vercelPriceUsd: numeric("vercel_price_usd", { precision: 10, scale: 2 }).notNull(),
+    planCentavos: integer("plan_centavos").notNull(),
+    domainCentavos: integer("domain_centavos").notNull(),
+    totalCentavos: integer("total_centavos").notNull(),
+    provider: text("provider").notNull(), // 'paymongo' | 'xendit'
+    providerRef: text("provider_ref"), // checkout session / invoice id
+    status: text("status").notNull().default("pending_payment"), // 'pending_payment' | 'paid' | 'purchasing' | 'active' | 'needs_review' | 'expired'
+    vercelOrderId: text("vercel_order_id"),
+    failureReason: text("failure_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    clinicIdx: index("domain_orders_clinic_id_idx").on(table.clinicId),
+    // A domain can have one live order at a time; abandoned ones are 'expired'.
+    domainLiveIdx: uniqueIndex("domain_orders_domain_live_idx")
+      .on(table.domain)
+      .where(sql`status in ('pending_payment','paid','purchasing','active','needs_review')`),
+    providerRefIdx: index("domain_orders_provider_ref_idx").on(table.provider, table.providerRef),
   }),
 );

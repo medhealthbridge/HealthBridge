@@ -19,10 +19,12 @@ import { BranchStep } from "./branch-step";
 import { BrandingStep } from "./branding-step";
 import { StaffStep } from "./staff-step";
 import { GoLiveStep } from "./go-live-step";
+import { DomainOffer } from "./domain-offer";
+import type { DomainOfferConfig } from "@/src/server/services/domain-offer";
 
 const STAFF_STEP = ONBOARDING_STEP_FIELDS.length - 1;
 
-export function OnboardingWizard() {
+export function OnboardingWizard({ domainOffer }: { domainOffer: DomainOfferConfig | null }) {
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<OnboardingInput>(DEFAULT_ONBOARDING_VALUES);
   const [errors, setErrors] = useState<StepProps["errors"]>({});
@@ -135,6 +137,13 @@ export function OnboardingWizard() {
           )}
         </div>
       </form>
+
+      {/* Its own form, so it sits beside the wizard's rather than inside it. */}
+      {step === GO_LIVE_STEP && domainOffer && (
+        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+          <DomainOffer offer={domainOffer} defaultQuery={values.subdomain} />
+        </div>
+      )}
     </div>
   );
 }

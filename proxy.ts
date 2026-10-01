@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { clinicSubdomainsEnabled, tenantSlugFromHost } from "@/src/lib/clinic-host";
+import { clinicSubdomainsEnabled, isCustomHost, tenantSlugFromHost } from "@/src/lib/clinic-host";
 import { CLINIX_ROUTES } from "@/src/lib/constants";
 
 const SUBDOMAIN_ROUTES: Record<string, string> = {
@@ -18,7 +18,12 @@ export function proxy(request: NextRequest) {
   // A clinic's own subdomain opens its console. Whether the signed-in user
   // actually owns that clinic is checked by the console layout, not here: the
   // proxy can't reach the database, and a route rewrite is not authorization.
-  if (clinicSubdomainsEnabled() && tenantSlugFromHost(host) && request.nextUrl.pathname === "/") {
+  // A clinic's own domain does the same; the layout then resolves it through domain_lookups.
+  if (
+    clinicSubdomainsEnabled() &&
+    (tenantSlugFromHost(host) || isCustomHost(host)) &&
+    request.nextUrl.pathname === "/"
+  ) {
     return NextResponse.rewrite(new URL(CLINIX_ROUTES.admin, request.url));
   }
 
