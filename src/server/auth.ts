@@ -111,7 +111,9 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
-    sendOnSignUp: true,
+    // Off: signupAction sends explicitly, so an already-registered but still
+    // unverified address (a retry, or a lost first email) gets a fresh link too.
+    sendOnSignUp: false,
     sendOnSignIn: true,
     autoSignInAfterVerification: true,
     // Sent after the response so response time doesn't reveal whether the

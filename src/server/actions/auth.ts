@@ -72,6 +72,12 @@ export async function signupAction(_prev: SignupState, formData: FormData): Prom
       body: { ...parsed.data, callbackURL: CLINIX_ROUTES.onboarding },
       headers: await headers(),
     });
+    // Sends only to an existing unverified address and answers the same for any
+    // other, so a retried sign-up gets its link without revealing who is registered.
+    await auth.api.sendVerificationEmail({
+      body: { email: parsed.data.email, callbackURL: CLINIX_ROUTES.onboarding },
+      headers: await headers(),
+    });
   } catch (error) {
     if (!(error instanceof APIError)) throw error;
     if (isRateLimited(error)) return { values, message: RATE_LIMITED_MESSAGE };
