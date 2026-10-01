@@ -6,7 +6,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { auth } from "@/src/server/auth";
-import { CLINIX_ROUTES } from "@/src/lib/constants";
+import { isAdminHost } from "@/src/lib/clinic-host";
+import { CLINIX_ROUTES, COMPANY_ADMIN_ROUTE } from "@/src/lib/constants";
 import {
   loginSchema,
   requestPasswordResetSchema,
@@ -53,7 +54,8 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   }
 
   revalidatePath(CLINIX_ROUTES.landing, "layout");
-  redirect(CLINIX_ROUTES.app);
+  // The company admin signs in on its own host and lands in its own console.
+  redirect(isAdminHost((await headers()).get("host")) ? COMPANY_ADMIN_ROUTE : CLINIX_ROUTES.app);
 }
 
 export async function signupAction(_prev: SignupState, formData: FormData): Promise<SignupState> {

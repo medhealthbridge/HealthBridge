@@ -59,3 +59,10 @@ export function isCustomHost(host: string | null | undefined) {
     hostname.endsWith(".vercel.app")
   );
 }
+
+/** The one host the company admin (`/admin`) is served from. */
+export const ADMIN_HOST = `admin${CLINIC_DOMAIN_SUFFIX}`;
+
+export function isAdminHost(host: string | null | undefined) {
+  return host?.split(":")[0].toLowerCase() === ADMIN_HOST;
+}
