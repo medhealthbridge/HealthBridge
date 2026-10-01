@@ -83,6 +83,18 @@ const rateLimitAuthEndpoints = createAuthMiddleware(async (ctx) => {
   }
 });
 
+/**
+ * Runs after the response, where a rejection would otherwise vanish. The
+ * message names the provider's reason and never the link, which is a token.
+ */
+async function deliver(kind: string, send: () => Promise<void>) {
+  try {
+    await send();
+  } catch (error) {
+    console.error(`[email] ${kind} email failed:`, error instanceof Error ? error.message : "unknown error");
+  }
+}
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -95,7 +107,7 @@ export const auth = betterAuth({
     // the token before redirecting to the form — so an expired link never
     // reaches a password field.
     sendResetPassword: async ({ user, url }) => {
-      after(() => sendPasswordResetEmail(user, url));
+      after(() => deliver("password reset", () => sendPasswordResetEmail(user, url)));
     },
   },
   emailVerification: {
@@ -105,7 +117,7 @@ export const auth = betterAuth({
     // Sent after the response so response time doesn't reveal whether the
     // address was new (sign-up answers the same way for existing emails).
     sendVerificationEmail: async ({ user, url }) => {
-      after(() => sendVerificationEmail(user, url));
+      after(() => deliver("verification", () => sendVerificationEmail(user, url)));
     },
   },
   socialProviders,
