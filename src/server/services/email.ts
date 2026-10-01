@@ -4,12 +4,8 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 type Email = { to: string; subject: string; text: string; html: string };
 
-/**
- * Sends through Resend's HTTP API. A rejection is logged with Resend's own
- * reason (e.g. unverified sender domain) and the subject — never the body,
- * which holds a sign-in token — then rethrown.
- */
-async function sendEmail(to: string, email: EmailContent) {
+/** Sends through Resend's HTTP API. Errors never include the message body, which may hold a token. */
+async function sendEmail(email: Email) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) throw new Error("Email is not configured: set RESEND_API_KEY and EMAIL_FROM.");
@@ -17,14 +13,19 @@ async function sendEmail(to: string, email: EmailContent) {
   const response = await fetch(RESEND_ENDPOINT, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from, to: [to], ...email }),
+    body: JSON.stringify({ from, ...email }),
   });
-  if (response.ok) return;
-
-  const error: { name?: string; message?: string } = await response.json().catch(() => ({}));
-  const reason = redactEmails(error.message ?? "no reason given");
-  console.error(`[email] "${email.subject}" rejected by Resend (HTTP ${response.status}, ${error.name}): ${reason}`);
-  throw new Error(`Email provider rejected the message (HTTP ${response.status}).`);
+  if (!response.ok) {
+    // Resend explains itself in the body — an unverified sender domain, a
+    // test sender writing to someone other than the account owner, a bad key.
+    // The status code alone sends you to the dashboard to find out which, so
+    // keep the reason. It describes the rejection, never the message we sent,
+    // so no verification or reset token can ride along.
+    const reason = await response.text().catch(() => "");
+    throw new Error(
+      `Email provider rejected the message (HTTP ${response.status})${reason ? `: ${reason.slice(0, 300)}` : "."}`,
+    );
+  }
 }
 
 export async function sendVerificationEmail(recipient: { name: string; email: string }, url: string) {
