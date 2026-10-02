@@ -7,18 +7,18 @@ import { RowActions, TableCard, Td, Th, Tr } from "@/src/components/console/data
 import { Monogram } from "@/src/components/console/monogram";
 import { PageHeader } from "@/src/components/console/page-header";
 import { Pill } from "@/src/components/console/pill";
-import { ToastButton } from "@/src/components/console/toast";
-import { TENANT_STATUS_TONE, TENANT_STATUSES, type Tenant, type TenantStatus } from "@/src/lib/mock-data/company-admin";
+import { TENANT_STATUS_TONE, TENANT_STATUSES, type TenantStatus } from "@/src/lib/mock-data/company-admin";
+import type { TenantRow } from "@/src/server/services/tenants";
 import { formatPeso } from "@/src/lib/utils";
 import { TenantDrawer } from "./tenant-drawer";
 
 type StatusFilter = "All" | TenantStatus;
 
 /** Header filters, the tenant table and the tenant drawer share search/filter/selection state. */
-export function TenantsDirectory({ tenants }: { tenants: Tenant[] }) {
+export function TenantsDirectory({ tenants }: { tenants: TenantRow[] }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("All");
-  const [selected, setSelected] = useState<Tenant | null>(null);
+  const [selected, setSelected] = useState<TenantRow | null>(null);
 
   const needle = search.trim().toLowerCase();
   const rows = tenants.filter(
@@ -50,10 +50,6 @@ export function TenantsDirectory({ tenants }: { tenants: Tenant[] }) {
                 <option key={option}>{option}</option>
               ))}
             </select>
-            <ToastButton message="CSV export queued — check your email">Export CSV</ToastButton>
-            <ToastButton variant="primary" message="Opening the new tenant form">
-              + New tenant
-            </ToastButton>
           </>
         }
       />
@@ -105,7 +101,7 @@ export function TenantsDirectory({ tenants }: { tenants: Tenant[] }) {
           {rows.length === 0 && (
             <tr>
               <Td colSpan={7} className="py-6 text-center text-console-subtle">
-                No tenants match these filters.
+                {tenants.length === 0 ? "No tenants have signed up yet." : "No tenants match these filters."}
               </Td>
             </tr>
           )}
