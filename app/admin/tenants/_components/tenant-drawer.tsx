@@ -2,7 +2,7 @@
 
 import { DetailDrawer } from "@/src/components/console/detail-drawer";
 import { Pill } from "@/src/components/console/pill";
-import { TENANT_STATUS_TONE } from "@/src/lib/mock-data/company-admin";
+import { TENANT_STATUS_TONE } from "@/src/lib/tenant-status";
 import type { TenantRow } from "@/src/server/services/tenants";
 import { formatPeso } from "@/src/lib/utils";
 

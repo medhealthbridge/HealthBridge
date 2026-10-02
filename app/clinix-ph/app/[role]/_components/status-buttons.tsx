@@ -44,7 +44,7 @@ export function StatusButtons({ appointmentId, status }: { appointmentId: string
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1.5">
+    <div className="flex flex-wrap items-center justify-end gap-2">
       {steps.map((step) => (
         <button key={step.to} type="button" disabled={pending} onClick={() => move(step.to)} className={consoleButtonClass(step.variant, "sm")}>
           {step.label}

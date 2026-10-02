@@ -1,8 +1,8 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { db, withAccount, withTenant } from "@/src/server/db/client";
-import { domainLookups, domainOrders, subscriptions } from "@/src/server/db/schema";
-import { CLINIC_DOMAIN_SUFFIX, RESERVED_SUBDOMAINS } from "@/src/lib/constants";
+import { withAccount, withOrder, withTenant } from "@/src/server/db/client";
+import { auditLogs, domainLookups, domainOrders, subscriptions, type DomainOrderStatus } from "@/src/server/db/schema";
+import { CLINIC_DOMAIN_SUFFIX, CLINIX_ROUTES, RESERVED_SUBDOMAINS } from "@/src/lib/constants";
 import { DOMAIN_YEARS, PLAN_FIRST_MONTH_CENTAVOS } from "@/src/lib/pricing";
 import { paymentProvider } from "./payments";
 import {
@@ -70,6 +70,7 @@ function isUniqueViolation(error: unknown) {
  * from the browser, and the clinic must already be authorised by the caller.
  */
 export async function startDomainCheckout(input: {
+  actorUserId: string;
   accountId: string;
   clinicId: string;
   domain: string;
@@ -88,21 +89,31 @@ export async function startDomainCheckout(input: {
 
   let orderId: string;
   try {
-    const [row] = await db
-      .insert(domainOrders)
-      .values({
-        accountId: input.accountId,
+    orderId = await withTenant(input.clinicId, async (tx) => {
+      const [row] = await tx
+        .insert(domainOrders)
+        .values({
+          accountId: input.accountId,
+          clinicId: input.clinicId,
+          domain,
+          years: DOMAIN_YEARS,
+          vercelPriceUsd: quote.priceUsd.toFixed(2),
+          planCentavos: quote.planCentavos,
+          domainCentavos: quote.domainCentavos,
+          totalCentavos: quote.totalCentavos,
+          provider: provider.id,
+        })
+        .returning({ id: domainOrders.id });
+      await tx.insert(auditLogs).values({
         clinicId: input.clinicId,
-        domain,
-        years: DOMAIN_YEARS,
-        vercelPriceUsd: quote.priceUsd.toFixed(2),
-        planCentavos: quote.planCentavos,
-        domainCentavos: quote.domainCentavos,
-        totalCentavos: quote.totalCentavos,
-        provider: provider.id,
-      })
-      .returning({ id: domainOrders.id });
-    orderId = row.id;
+        actorUserId: input.actorUserId,
+        entityType: "domain_order",
+        entityId: row.id,
+        action: "create",
+        diff: { after: { domain, totalCentavos: quote.totalCentavos, provider: provider.id } },
+      });
+      return row.id;
+    });
   } catch (error) {
     // Someone else already has a live order for this name.
     if (isUniqueViolation(error)) throw new DomainUnavailableError(domain);
@@ -118,26 +129,35 @@ export async function startDomainCheckout(input: {
       { name: `Domain ${domain} (1 year)`, centavos: quote.domainCentavos },
     ],
     customerEmail: input.customerEmail,
-    successUrl: `${input.origin}/clinix-ph/onboarding?domain=paid`,
-    cancelUrl: `${input.origin}/clinix-ph/onboarding?domain=cancelled`,
+    successUrl: `${input.origin}${CLINIX_ROUTES.admin}/settings`,
+    cancelUrl: `${input.origin}${CLINIX_ROUTES.admin}/settings`,
   });
-  await db.update(domainOrders).set({ providerRef: checkout.ref }).where(eq(domainOrders.id, orderId));
+  await withOrder(orderId, (tx) => tx.update(domainOrders).set({ providerRef: checkout.ref }).where(eq(domainOrders.id, orderId)));
   return { orderId, url: checkout.url, quote };
 }
 
 /** Moves an order between states only if it is still in `from`; false means someone else already did. */
-async function advance(orderId: string, from: string, to: string, extra: Partial<typeof domainOrders.$inferInsert> = {}) {
-  const rows = await db
-    .update(domainOrders)
-    .set({ status: to, ...extra })
-    .where(and(eq(domainOrders.id, orderId), eq(domainOrders.status, from)))
-    .returning({ id: domainOrders.id });
+async function advance(
+  orderId: string,
+  from: DomainOrderStatus,
+  to: DomainOrderStatus,
+  extra: Partial<typeof domainOrders.$inferInsert> = {},
+) {
+  const rows = await withOrder(orderId, (tx) =>
+    tx
+      .update(domainOrders)
+      .set({ status: to, ...extra })
+      .where(and(eq(domainOrders.id, orderId), eq(domainOrders.status, from)))
+      .returning({ id: domainOrders.id }),
+  );
   return rows.length > 0;
 }
 
 async function flagForReview(orderId: string, reason: string) {
   console.error(`[domains] order ${orderId} needs review: ${reason}`);
-  await db.update(domainOrders).set({ status: "needs_review", failureReason: reason.slice(0, 500) }).where(eq(domainOrders.id, orderId));
+  await withOrder(orderId, (tx) =>
+    tx.update(domainOrders).set({ status: "needs_review", failureReason: reason.slice(0, 500) }).where(eq(domainOrders.id, orderId)),
+  );
 }
 
 /**
@@ -149,7 +169,7 @@ async function flagForReview(orderId: string, reason: string) {
  */
 export async function fulfillPaidOrder(orderId: string, ref: string) {
   if (!z.uuid().safeParse(orderId).success) return;
-  const [order] = await db.select().from(domainOrders).where(eq(domainOrders.id, orderId)).limit(1);
+  const [order] = await withOrder(orderId, (tx) => tx.select().from(domainOrders).where(eq(domainOrders.id, orderId)).limit(1));
   if (!order || order.providerRef !== ref) return;
   const provider = paymentProvider(order.provider);
   if (!provider) return;
@@ -193,11 +213,13 @@ export async function fulfillPaidOrder(orderId: string, ref: string) {
 }
 
 export async function getClinicDomainOrder(clinicId: string) {
-  const [row] = await db
-    .select({ domain: domainOrders.domain, status: domainOrders.status, totalCentavos: domainOrders.totalCentavos })
-    .from(domainOrders)
-    .where(eq(domainOrders.clinicId, clinicId))
-    .orderBy(desc(domainOrders.createdAt))
-    .limit(1);
-  return row ?? null;
+  return withTenant(clinicId, async (tx) => {
+    const [row] = await tx
+      .select({ domain: domainOrders.domain, status: domainOrders.status, totalCentavos: domainOrders.totalCentavos })
+      .from(domainOrders)
+      .where(and(eq(domainOrders.clinicId, clinicId), isNull(domainOrders.deletedAt)))
+      .orderBy(desc(domainOrders.createdAt))
+      .limit(1);
+    return row ?? null;
+  });
 }

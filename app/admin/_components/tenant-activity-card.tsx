@@ -1,7 +1,8 @@
 import { Monogram } from "@/src/components/console/monogram";
 import { Panel, PanelHeader } from "@/src/components/console/panel";
 import { Pill } from "@/src/components/console/pill";
-import { TENANT_ACTIVITY_SUMMARY, TENANT_STATUS_TONE, TENANTS } from "@/src/lib/mock-data/company-admin";
+import { TENANT_ACTIVITY_SUMMARY, TENANTS } from "@/src/lib/mock-data/company-admin";
+import { TENANT_STATUS_TONE } from "@/src/lib/tenant-status";
 import { formatPeso } from "@/src/lib/utils";
 
 const PREVIEW_COUNT = 6;

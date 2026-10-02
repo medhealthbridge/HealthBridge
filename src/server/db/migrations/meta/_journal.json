@@ -43,6 +43,13 @@
       "when": 1790843238188,
       "tag": "0005_domain_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790913953542,
+      "tag": "0006_domain_orders_rls_and_admin_read",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,8 @@
 "use server";
 
-import { headers } from "next/headers";
 import { z } from "zod";
+import { clinicSubdomainsEnabled } from "@/src/lib/clinic-host";
+import { CLINIC_DOMAIN_SUFFIX } from "@/src/lib/constants";
 import { requireWorkspace } from "@/src/server/auth";
 import {
   DomainUnavailableError,
@@ -46,15 +47,17 @@ export async function startDomainCheckoutAction(values: unknown): Promise<{ url?
 
   // Onboarding creates exactly one clinic; its account is the one being billed.
   const clinic = workspace.clinics[0];
-  const host = (await headers()).get("host");
+  // Built from our own config, never from the request's Host header, which a client controls.
+  const origin = clinicSubdomainsEnabled() ? `https://${clinic.subdomain}${CLINIC_DOMAIN_SUFFIX}` : (process.env.BETTER_AUTH_URL ?? "");
   try {
     const { url } = await startDomainCheckout({
+      actorUserId: user.id,
       accountId: clinic.accountId,
       clinicId: clinic.id,
       domain: parsed.data.domain,
       providerId: parsed.data.provider,
       customerEmail: user.email,
-      origin: `https://${host}`,
+      origin,
     });
     return { url };
   } catch (error) {

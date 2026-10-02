@@ -116,3 +116,39 @@ Apply to all code, features, fixes, and changes. HealthBridge handles patient da
 - **Preserve controls.** Never weaken, bypass, or remove a security measure to make implementation easier.
 - **Before implementing a feature**, consider its authentication, authorization, input validation, data access, secrets, logging, file handling, and abuse risks. Follow existing architecture and security patterns; prefer minimal, targeted changes over rewrites.
 <!-- END:cursor-rules-ported -->
+
+<!-- BEGIN:project-working-agreement -->
+# Working agreement for this repo (read before any change)
+
+These are binding for every session, human or AI. They exist because earlier work skipped them.
+
+## Before you build
+1. **Read the skills that apply, every time, not from memory.**
+   - Schema, migration, RLS, tenancy, billing, security → `.claude/skills/db-schema-architect/SKILL.md` (its "Security engineering" section applies to *all* code).
+   - Any UI → `.claude/skills/ui-ux-pro-max/SKILL.md`; run its search CLI first. The CLI needs Python ≥ 3.12 (`python3.12 .claude/skills/ui-ux-pro-max/scripts/search.py …`); on 3.11 it dies with an f-string SyntaxError.
+   - Neon/Postgres operations → `.agents/skills/neon-postgres/SKILL.md`.
+2. **Read `node_modules/next/dist/docs/`** for any Next API you haven't used in this repo (proxy, `after`, route handlers, caching) — this is not the Next.js in your training data.
+3. Existing console UI (`src/components/console/*`, `ConsoleShell`) is the design system for product screens. Reuse it; the skill's generated "design system" is for new marketing surfaces only.
+
+## Database & tenancy (learned the hard way)
+- **Every new table gets RLS in the same migration** or a written reason in the migration comment. No silent exceptions.
+- Services reach the database only through `withTenant` / `withAccount` / `withUser` / `withAccountAndClinic` / `withOrder` / `withPlatformAdmin` in `src/server/db/client.ts`. Never import bare `db` in a service for tenant data. `withPlatformAdmin` is for company-admin reads only, after `requirePlatformAdmin()`.
+- In policies read settings as `nullif(current_setting('app.x', true), '')::uuid` — a custom setting reads `''` after its transaction ends, and `''::uuid` raises.
+- **Known gap:** the app's DB role (`neondb_owner`) has `BYPASSRLS`, so RLS is currently *not enforced at runtime*. App-level `WHERE clinic_id` filters are the real protection until a non-bypass role is used. Never rely on RLS alone, and don't claim data was checked "under RLS".
+- Money is integer centavos/cents. Statuses are `text` + a `const` tuple + `$type<…>()`; never a parallel hand-written union.
+- Patient-record writes and billing-state changes write an `audit_logs` row in the same transaction, from the service.
+- Migrations: `drizzle-kit generate`, read the SQL, append hand-written RLS to the same file. The sandbox can't reach Neon from the shell, so apply through the Neon MCP **and** insert the row into `drizzle.__drizzle_migrations` (`hash` = sha256 of the file, `created_at` = the journal's `when`) or the next `drizzle-kit migrate` will re-run it.
+
+## Security defaults
+- Authorize on the server in the action/handler/page itself; the layout is not a gate.
+- Never trust the request's `Host`, `Origin` or any id in a form for authorization or for building redirect/return URLs — derive them from the session or our own config.
+- Webhooks: verify the signature **before** parsing, then re-confirm the fact (e.g. paid amount) with the provider's API, rate-limit the endpoint, and make the handler idempotent with a guarded status update.
+- Seeders never put a credential in the repo; passwords come from the environment, and a seeder never overwrites an existing credential.
+
+## Definition of done
+- `npx tsc --noEmit`, `npx eslint app src`, `npm test` and `npm run build` all pass.
+- Pure logic and every webhook/permission boundary has a unit test next to it (`*.test.ts`, run by Vitest).
+- No dead code left behind when a screen moves from mock to real data: delete the mock exports it stops using.
+- UI: ≥ 44px targets on touch, ≥ 8px between adjacent targets, labels on every input, errors next to the field, Lucide icons only (no glyph characters), buttons disabled while pending, checked at 375 / 768 / 1024 / 1440.
+- Say plainly what was *not* verified (anything that needs real credentials or a browser).
+<!-- END:project-working-agreement -->

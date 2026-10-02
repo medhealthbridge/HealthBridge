@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
-import { db } from "@/src/server/db/client";
+import { withPlatformAdmin } from "@/src/server/db/client";
 import { accounts, clinics, subscriptions, user } from "@/src/server/db/schema";
-import type { TenantStatus } from "@/src/lib/mock-data/company-admin";
+import type { TenantStatus } from "@/src/lib/tenant-status";
 
 export type TenantClinic = { name: string; subdomain: string; specialty: string };
 
@@ -42,8 +42,8 @@ const date = new Intl.DateTimeFormat("en-PH", { day: "2-digit", month: "short", 
  * have passed `requirePlatformAdmin`). Billing data only — never patient data.
  */
 export async function listTenants(): Promise<TenantRow[]> {
-  const [accountRows, clinicRows] = await Promise.all([
-    db
+  const [accountRows, clinicRows] = await withPlatformAdmin((tx) => Promise.all([
+    tx
       .select({
         id: accounts.id,
         name: accounts.companyName,
@@ -58,11 +58,11 @@ export async function listTenants(): Promise<TenantRow[]> {
       .innerJoin(user, eq(user.id, accounts.ownerUserId))
       .leftJoin(subscriptions, eq(subscriptions.accountId, accounts.id))
       .orderBy(asc(accounts.companyName)),
-    db
+    tx
       .select({ accountId: clinics.accountId, name: clinics.name, subdomain: clinics.subdomain, specialty: clinics.specialty })
       .from(clinics)
       .orderBy(asc(clinics.createdAt)),
-  ]);
+  ]));
 
   return accountRows.map((row) => {
     const status = STATUS[row.status ?? ""] ?? "Cancelled";

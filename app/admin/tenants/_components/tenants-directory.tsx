@@ -7,7 +7,7 @@ import { RowActions, TableCard, Td, Th, Tr } from "@/src/components/console/data
 import { Monogram } from "@/src/components/console/monogram";
 import { PageHeader } from "@/src/components/console/page-header";
 import { Pill } from "@/src/components/console/pill";
-import { TENANT_STATUS_TONE, TENANT_STATUSES, type TenantStatus } from "@/src/lib/mock-data/company-admin";
+import { TENANT_STATUS_TONE, TENANT_STATUSES, type TenantStatus } from "@/src/lib/tenant-status";
 import type { TenantRow } from "@/src/server/services/tenants";
 import { formatPeso } from "@/src/lib/utils";
 import { NewTenantDialog } from "./new-tenant-dialog";

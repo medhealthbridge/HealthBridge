@@ -85,3 +85,28 @@ export async function withAccountAndClinic<T>(
     return fn(tx);
   });
 }
+
+/**
+ * For the payment webhook, which knows only an order id (from a signed
+ * payload) before any clinic is known. `domain_orders`' policy lets exactly
+ * that one order through. Never call with an id taken from an unverified request.
+ */
+export async function withOrder<T>(orderId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  assertUuid(orderId, "orderId");
+  return db.transaction(async (tx) => {
+    await tx.execute(`set local app.current_order_id = '${orderId}'`);
+    return fn(tx);
+  });
+}
+
+/**
+ * Read access across every tenant, for the company admin's own pages (tenant
+ * list). The matching policies are SELECT-only. Call only after
+ * `requirePlatformAdmin()` has passed in the same request.
+ */
+export async function withPlatformAdmin<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.execute(`set local app.platform_admin = 'on'`);
+    return fn(tx);
+  });
+}

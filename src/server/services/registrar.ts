@@ -78,7 +78,7 @@ export async function getPriceUsd(domain: string, years: number) {
   return money.parse((json as { purchasePrice?: unknown }).purchasePrice);
 }
 
-export const registrantSchema = z.object({
+const registrantSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   email: z.email(),

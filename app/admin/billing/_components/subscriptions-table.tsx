@@ -1,6 +1,7 @@
 import { TableCard, Td, Th, Tr } from "@/src/components/console/data-table";
 import { Pill } from "@/src/components/console/pill";
-import { LAST_BILLING_EVENT, TENANT_STATUS_TONE, TENANTS } from "@/src/lib/mock-data/company-admin";
+import { LAST_BILLING_EVENT, TENANTS } from "@/src/lib/mock-data/company-admin";
+import { TENANT_STATUS_TONE } from "@/src/lib/tenant-status";
 import { formatPeso } from "@/src/lib/utils";
 
 export function SubscriptionsTable() {

@@ -1,4 +1,5 @@
 import { COMPANY_ADMIN_ROUTE } from "@/src/lib/constants";
+import type { TenantStatus } from "@/src/lib/tenant-status";
 import { formatPeso } from "@/src/lib/utils";
 import type {
   ActionItem,
@@ -6,8 +7,6 @@ import type {
   ConsoleBrand,
   ConsoleNotification,
   ConsoleUser,
-  DrawerAction,
-  DrawerPill,
   Kpi,
   MeterRow,
   NavGroup,
@@ -89,16 +88,6 @@ export const COMPANY_NOTIFICATIONS: ConsoleNotification[] = [
   },
 ];
 
-export const TENANT_STATUSES = ["Active", "Trial", "Past due", "Cancelled"] as const;
-export type TenantStatus = (typeof TENANT_STATUSES)[number];
-
-export const TENANT_STATUS_TONE: Record<TenantStatus, Tone> = {
-  Active: "accent",
-  Trial: "info",
-  "Past due": "warn",
-  Cancelled: "neutral",
-};
-
 export type Tenant = {
   key: string;
   name: string;
@@ -126,30 +115,6 @@ export const TENANT_ACTIVITY_SUMMARY: { label: string; tone: Tone }[] = [
   { label: "4 trial", tone: "info" },
   { label: "2 past due", tone: "danger" },
 ];
-
-export const TENANT_DRAWER_EVENTS: Omit<AuditEntry, "by">[] = [
-  { action: "invoice_paid", tone: "accent", meta: "Monthly invoice settled via card", when: "2 weeks ago" },
-  { action: "module_enabled", tone: "info", meta: "Claims Manager enabled", when: "1 month ago" },
-  { action: "tier_changed", tone: "neutral", meta: "Upgraded from Tier 1", when: "2 months ago" },
-];
-
-export const TENANT_DRAWER_MODULES = "4 of 6";
-
-export function tenantDrawerActions(name: string): DrawerAction[] {
-  return [
-    { label: "Change tier", variant: "primary", toast: `Opening tier change for ${name}` },
-    { label: "Issue refund", variant: "secondary", toast: `Opening refund for ${name}` },
-    { label: "Masterlock", variant: "danger", toast: `Masterlock confirmation for ${name}` },
-  ];
-}
-
-export function tenantDrawerPills(tenant: Tenant): DrawerPill[] {
-  return [
-    { label: tenant.tier, tone: "neutral" },
-    { label: tenant.status, tone: TENANT_STATUS_TONE[tenant.status] },
-    { label: `${tenant.clinics} clinics`, tone: "neutral" },
-  ];
-}
 
 export const COMPANY_KPIS: Kpi[] = [
   { label: "MRR", value: formatPeso(20660), delta: "+8.4%", deltaTone: "accent", sub: "24 paying tenants", sparkTone: "accent", spark: [30, 38, 42, 40, 48, 52, 55, 58, 62, 60, 66, 70] },

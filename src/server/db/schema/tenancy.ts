@@ -106,6 +106,9 @@ export const domainLookups = pgTable(
  * centavos; `vercelPriceUsd` is the quote the charge was built from and the
  * `expectedPrice` the registrar must still honour at purchase time.
  */
+export const DOMAIN_ORDER_STATUSES = ["pending_payment", "paid", "purchasing", "active", "needs_review", "expired"] as const;
+export type DomainOrderStatus = (typeof DOMAIN_ORDER_STATUSES)[number];
+
 export const domainOrders = pgTable(
   "domain_orders",
   {
@@ -120,11 +123,13 @@ export const domainOrders = pgTable(
     totalCentavos: integer("total_centavos").notNull(),
     provider: text("provider").notNull(), // 'paymongo' | 'xendit'
     providerRef: text("provider_ref"), // checkout session / invoice id
-    status: text("status").notNull().default("pending_payment"), // 'pending_payment' | 'paid' | 'purchasing' | 'active' | 'needs_review' | 'expired'
+    status: text("status").$type<DomainOrderStatus>().notNull().default("pending_payment"),
     vercelOrderId: text("vercel_order_id"),
     failureReason: text("failure_reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+    // Orders are never deleted, only moved to a terminal status; kept for the billing-row convention.
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => ({
     clinicIdx: index("domain_orders_clinic_id_idx").on(table.clinicId),

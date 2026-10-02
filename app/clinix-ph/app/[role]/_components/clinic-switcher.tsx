@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { consoleButtonClass } from "@/src/components/console/console-button";
 
 type Option = { key: string; name: string; href: string };
@@ -8,7 +9,7 @@ export function ClinicSwitcher({ current, options }: { current: string; options:
     <details className="group mb-1.5">
       <summary className={consoleButtonClass("secondary", "md", "w-full list-none justify-between bg-console-canvas [&::-webkit-details-marker]:hidden")}>
         <span className="min-w-0 truncate">{options.find((option) => option.key === current)?.name}</span>
-        <span aria-hidden="true" className="text-console-subtle transition-transform duration-150 group-open:rotate-180">▾</span>
+        <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-console-subtle transition-transform duration-150 group-open:rotate-180" />
       </summary>
       <ul className="mt-1 rounded-xl border border-console-line bg-console-canvas p-1">
         {options.map((option) => (
