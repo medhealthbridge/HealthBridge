@@ -72,18 +72,6 @@ export type AuditEntry = {
   when: string;
 };
 
-export type StaffStatus = "Active" | "Invited" | "Deactivated";
-
-export type StaffMember = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: StaffStatus;
-  /** Extra column value (e.g. branch, last active). */
-  detail: string;
-};
-
 export type PlatformModule = {
   id: string;
   name: string;

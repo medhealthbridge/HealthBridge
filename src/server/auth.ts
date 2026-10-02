@@ -9,7 +9,7 @@ import { after } from "next/server";
 import { cache } from "react";
 import { db } from "./db/client";
 import { account, session, user, verification } from "./db/schema";
-import { isPlatformAdmin, listActiveMemberships } from "./services/access";
+import { listActiveMemberships, platformRoleOf } from "./services/access";
 import { describeStaffClinics } from "./services/clinic-app";
 import { getOwnerWorkspace } from "./services/workspace";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./services/email";
@@ -143,7 +143,7 @@ export const auth = betterAuth({
 
 export const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
 
-const getIsPlatformAdmin = cache(isPlatformAdmin);
+const getPlatformRole = cache(platformRoleOf);
 const getMemberships = cache(listActiveMemberships);
 
 async function ownedClinicIds(userId: string) {
@@ -164,7 +164,14 @@ export async function requireUser() {
 /** DataBridgeSol staff only (a `platform_admins` row); anyone else gets a 404. */
 export async function requirePlatformAdmin() {
   const current = await requireUser();
-  if (!(await getIsPlatformAdmin(current.id))) notFound();
+  if (!(await getPlatformRole(current.id))) notFound();
+  return current;
+}
+
+/** The founder account only: the one role that may invite or deactivate team members. */
+export async function requireSuperAdmin() {
+  const current = await requireUser();
+  if ((await getPlatformRole(current.id)) !== "super_admin") notFound();
   return current;
 }
 

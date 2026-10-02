@@ -66,3 +66,8 @@ export const ADMIN_HOST = `admin${CLINIC_DOMAIN_SUFFIX}`;
 export function isAdminHost(host: string | null | undefined) {
   return host?.split(":")[0].toLowerCase() === ADMIN_HOST;
 }
+
+/** Absolute URL on the admin host, or the current server's own path while subdomains are off (local/preview). */
+export function adminUrl(path: string) {
+  return clinicSubdomainsEnabled() ? `https://${ADMIN_HOST}${path}` : `${process.env.BETTER_AUTH_URL ?? ""}${path}`;
+}

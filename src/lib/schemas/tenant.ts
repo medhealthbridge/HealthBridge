@@ -9,7 +9,7 @@ export const TENANT_PLANS = ["trial", "active"] as const;
 export const newTenantSchema = z.object({
   companyName: z.string().trim().min(2, "Enter the business name.").max(120),
   ownerName: z.string().trim().min(2, "Enter the owner's name.").max(120),
-  ownerEmail: z.email("Enter a valid email address.").trim().toLowerCase(),
+  ownerEmail: z.string().trim().toLowerCase().pipe(z.email("Enter a valid email address.")),
   subdomain: subdomainSchema,
   branchName: z.string().trim().min(2, "Enter the first branch's name.").max(120),
   branchCity: z.string().trim().min(2, "Enter the branch city.").max(80),

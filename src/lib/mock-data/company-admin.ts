@@ -12,7 +12,6 @@ import type {
   NavGroup,
   PlatformModule,
   QuickAction,
-  StaffMember,
   Stat,
   Tone,
 } from "@/src/types/console";
@@ -190,13 +189,6 @@ export const SUPPORT_TICKETS: SupportTicket[] = [
   { tenant: "PawCare Veterinary Network", subject: "Trial extension request", severity: "Low", status: "Resolved", opened: "Yesterday" },
   { tenant: "VetLink Animal Hospitals", subject: "SMS delivery delayed for 2 branches", severity: "Medium", status: "Open", opened: "Yesterday" },
   { tenant: "Wellsprings Family Medicine", subject: "Onboarding 3 new practitioners", severity: "Low", status: "Resolved", opened: "3 days ago" },
-];
-
-export const COMPANY_STAFF: StaffMember[] = [
-  { id: "u1", name: "You — Founder", email: "founder@databridgesol.space", role: "Owner", status: "Active", detail: "Today" },
-  { id: "u2", name: "R. Cruz", email: "r.cruz@databridgesol.space", role: "Support lead", status: "Active", detail: "Today" },
-  { id: "u3", name: "J. Santos", email: "j.santos@databridgesol.space", role: "Platform admin", status: "Active", detail: "Today" },
-  { id: "u4", name: "A. Reyes", email: "a.reyes@databridgesol.space", role: "Support", status: "Invited", detail: "—" },
 ];
 
 export type TenantFeedback = {

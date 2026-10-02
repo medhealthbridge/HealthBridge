@@ -42,3 +42,21 @@ export function composePasswordResetEmail(recipient: Recipient, url: string): Co
     }),
   };
 }
+
+const INVITE_LIFETIME = "7 days";
+
+export function composePlatformInviteEmail(inviter: { name: string }, email: string, url: string): ComposedEmail {
+  return {
+    subject: "You're invited to the DataBridgeSol admin",
+    ...renderActionEmail({
+      preheader: `${inviter.name} invited you to join the DataBridgeSol team.`,
+      heading: "Join the DataBridgeSol team",
+      paragraphs: [
+        "Hi there,",
+        `${inviter.name} invited ${email} to the DataBridgeSol company admin, where the team manages clients, billing and support. Use the button below to set up your access.`,
+      ],
+      action: { label: "Accept invitation", url },
+      footnote: `This link expires in ${INVITE_LIFETIME} and works once. If you weren't expecting it, ignore this email — nothing happens until you accept.`,
+    }),
+  };
+}

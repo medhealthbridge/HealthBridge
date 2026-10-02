@@ -2,13 +2,14 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db, withUser } from "@/src/server/db/client";
 import { clinicStaff, platformAdmins } from "@/src/server/db/schema";
 
-export async function isPlatformAdmin(userId: string) {
+/** The user's DataBridgeSol team role, or null if they aren't (or are no longer) on the team. */
+export async function platformRoleOf(userId: string) {
   const [row] = await db
-    .select({ id: platformAdmins.id })
+    .select({ role: platformAdmins.role })
     .from(platformAdmins)
-    .where(eq(platformAdmins.userId, userId))
+    .where(and(eq(platformAdmins.userId, userId), eq(platformAdmins.isActive, true)))
     .limit(1);
-  return Boolean(row);
+  return row?.role ?? null;
 }
 
 /** The user's live clinic memberships, read through the `member_read` RLS policy. */

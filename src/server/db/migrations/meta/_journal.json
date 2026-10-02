@@ -50,6 +50,13 @@
       "when": 1790913953542,
       "tag": "0006_domain_orders_rls_and_admin_read",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790926383178,
+      "tag": "0007_platform_staff_roles_and_invites",
+      "breakpoints": true
     }
   ]
 }

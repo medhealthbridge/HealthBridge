@@ -1,4 +1,4 @@
-import { composePasswordResetEmail, composeVerificationEmail } from "./email-templates";
+import { composePasswordResetEmail, composePlatformInviteEmail, composeVerificationEmail } from "./email-templates";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -34,4 +34,8 @@ export async function sendVerificationEmail(recipient: { name: string; email: st
 
 export async function sendPasswordResetEmail(recipient: { name: string; email: string }, url: string) {
   await sendEmail({ to: recipient.email, ...composePasswordResetEmail(recipient, url) });
+}
+
+export async function sendPlatformInviteEmail(inviter: { name: string }, email: string, url: string) {
+  await sendEmail({ to: email, ...composePlatformInviteEmail(inviter, email, url) });
 }

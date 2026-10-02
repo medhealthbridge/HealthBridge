@@ -12,7 +12,6 @@ import type {
   NavGroup,
   PlatformModule,
   QuickAction,
-  StaffMember,
   Stat,
   Tone,
 } from "@/src/types/console";
@@ -238,14 +237,6 @@ export const DELIVERIES: Delivery[] = [
   { channel: "Email", to: "g.ubaldo@mail.com", template: "Receipt", status: "Delivered", sent: "09:14" },
   { channel: "SMS", to: "0920 447 1918", template: "Appointment reminder", status: "Queued", sent: "—" },
   { channel: "Viber", to: "0917 333 7788", template: "Post-op check-in", status: "Failed", sent: "10:41" },
-];
-
-export const CLINIX_STAFF: StaffMember[] = [
-  { id: "u1", name: "Dra. M. Villanueva", email: "owner@clinix.ph", role: "Owner", detail: "All branches", status: "Active" },
-  { id: "u2", name: "Dr. Paolo Reyes", email: "p.reyes@clinix.ph", role: "Practitioner", detail: "BGC Dental", status: "Active" },
-  { id: "u3", name: "Nurse Jia Fernandez", email: "jia.f@clinix.ph", role: "Assistant", detail: "BGC Dental", status: "Active" },
-  { id: "u4", name: "Reception — Kim Uy", email: "kim.uy@clinix.ph", role: "Assistant", detail: "Alabang", status: "Invited" },
-  { id: "u5", name: "Dr. Ana Lao", email: "a.lao@clinix.ph", role: "Practitioner", detail: "Ortigas", status: "Deactivated" },
 ];
 
 export const CLINIC_MODULES: PlatformModule[] = [

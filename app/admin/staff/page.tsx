@@ -1,26 +1,25 @@
 import type { Metadata } from "next";
 import { requirePlatformAdmin } from "@/src/server/auth";
+import { platformRoleOf } from "@/src/server/services/access";
+import { listPlatformPeople } from "@/src/server/services/platform-staff";
 import { PageHeader } from "@/src/components/console/page-header";
-import { StaffTable } from "@/src/components/console/staff-table";
-import { ToastButton } from "@/src/components/console/toast";
-import { COMPANY_STAFF } from "@/src/lib/mock-data/company-admin";
+import { InviteAdminDialog } from "./_components/invite-admin-dialog";
+import { PlatformStaffTable } from "./_components/platform-staff-table";
 
 export const metadata: Metadata = { title: "Company staff" };
 
 export default async function CompanyStaffPage() {
-  await requirePlatformAdmin();
+  const admin = await requirePlatformAdmin();
+  const canManage = (await platformRoleOf(admin.id)) === "super_admin";
 
   return (
     <>
       <PageHeader
         title="Company staff"
-        actions={
-          <ToastButton variant="primary" message="Invite sheet opened">
-            + Invite admin
-          </ToastButton>
-        }
+        description="Everyone with access to this admin."
+        actions={canManage ? <InviteAdminDialog /> : undefined}
       />
-      <StaffTable staff={COMPANY_STAFF} detailLabel="Last active" deactivatedSuffix=" deactivated" />
+      <PlatformStaffTable people={await listPlatformPeople()} currentUserId={admin.id} canManage={canManage} />
     </>
   );
 }

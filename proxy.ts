@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { clinicSubdomainsEnabled, isAdminHost, isCustomHost, tenantSlugFromHost } from "@/src/lib/clinic-host";
-import { CLINIX_ROUTES, COMPANY_ADMIN_ROUTE } from "@/src/lib/constants";
+import { ADMIN_INVITE_ROUTE, CLINIX_ROUTES, COMPANY_ADMIN_ROUTE } from "@/src/lib/constants";
 
 const SUBDOMAIN_ROUTES: Record<string, string> = {
   clinix: "/clinix-ph",
 };
 
-// What the admin host may serve besides the company admin itself: sign-in and
+// What the admin host may serve besides the company admin itself: sign-in, invitations and
 // its API. Everything else (clinic consoles, the clinic app) belongs elsewhere.
-const ADMIN_HOST_ALLOWED = [COMPANY_ADMIN_ROUTE, "/api", CLINIX_ROUTES.auth];
+const ADMIN_HOST_ALLOWED = [COMPANY_ADMIN_ROUTE, ADMIN_INVITE_ROUTE, "/api", CLINIX_ROUTES.auth];
 
 const underPath = (pathname: string, base: string) => pathname === base || pathname.startsWith(`${base}/`);
 

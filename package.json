@@ -12,8 +12,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed:tenants": "node --env-file=.env.local scripts/seed-demo-tenants.mjs",
-    "db:seed:admin": "node --env-file=.env.local scripts/seed-super-admin.mjs"
+    "db:seed:tenants": "node --env-file=.env.local scripts/seed-demo-tenants.mjs"
   },
   "dependencies": {
     "@neon/config": "^1.5.0",
