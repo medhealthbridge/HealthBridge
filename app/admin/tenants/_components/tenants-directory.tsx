@@ -10,6 +10,7 @@ import { Pill } from "@/src/components/console/pill";
 import { TENANT_STATUS_TONE, TENANT_STATUSES, type TenantStatus } from "@/src/lib/mock-data/company-admin";
 import type { TenantRow } from "@/src/server/services/tenants";
 import { formatPeso } from "@/src/lib/utils";
+import { NewTenantDialog } from "./new-tenant-dialog";
 import { TenantDrawer } from "./tenant-drawer";
 
 type StatusFilter = "All" | TenantStatus;
@@ -50,6 +51,7 @@ export function TenantsDirectory({ tenants }: { tenants: TenantRow[] }) {
                 <option key={option}>{option}</option>
               ))}
             </select>
+            <NewTenantDialog />
           </>
         }
       />

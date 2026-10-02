@@ -8,22 +8,24 @@ import {
 
 const hexColor = z.string().regex(/^#[0-9a-f]{6}$/i, "Pick a valid color.");
 
+export const subdomainSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(3, "Use at least 3 characters.")
+  .max(40, "Use at most 40 characters.")
+  .regex(
+    /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/,
+    "Use lowercase letters, numbers and hyphens, not starting or ending with a hyphen.",
+  )
+  .refine(
+    (value) => !(RESERVED_SUBDOMAINS as readonly string[]).includes(value),
+    "That subdomain is reserved. Try another.",
+  );
+
 export const onboardingSchema = z.object({
   clinicName: z.string().trim().min(2, "Enter your clinic or business name.").max(120),
-  subdomain: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(3, "Use at least 3 characters.")
-    .max(40, "Use at most 40 characters.")
-    .regex(
-      /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/,
-      "Use lowercase letters, numbers and hyphens, not starting or ending with a hyphen.",
-    )
-    .refine(
-      (value) => !(RESERVED_SUBDOMAINS as readonly string[]).includes(value),
-      "That subdomain is reserved. Try another.",
-    ),
+  subdomain: subdomainSchema,
   specialty: z.enum(SPECIALTIES),
   branchName: z.string().trim().min(2, "Enter a branch name.").max(120),
   branchCity: z.string().trim().min(2, "Enter the branch city.").max(80),

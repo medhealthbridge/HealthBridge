@@ -8,7 +8,7 @@ import { CONSOLE_INPUT } from "@/src/components/console/console-input";
 import { useToast } from "@/src/components/console/toast";
 import { addWalkInAction, type WalkInState } from "@/src/server/actions/clinic-app";
 import type { PractitionerOption } from "@/src/server/services/clinic-app";
-import { FormField } from "./form-field";
+import { FormField } from "@/src/components/console/form-field";
 
 const INITIAL: WalkInState = {};
 

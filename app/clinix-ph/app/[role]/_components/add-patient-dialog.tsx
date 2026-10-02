@@ -7,7 +7,7 @@ import { ConsoleDialog } from "@/src/components/console/console-dialog";
 import { CONSOLE_INPUT } from "@/src/components/console/console-input";
 import { useToast } from "@/src/components/console/toast";
 import { addPatientAction, type NewPatientState } from "@/src/server/actions/clinic-app";
-import { FormField } from "./form-field";
+import { FormField } from "@/src/components/console/form-field";
 
 const INITIAL: NewPatientState = {};
 

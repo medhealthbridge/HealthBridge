@@ -26,12 +26,12 @@ export class WorkspaceExistsError extends Error {
   }
 }
 
-const SUBDOMAIN_CONSTRAINTS = new Set(["clinics_subdomain_unique", "domain_lookups_pkey"]);
-const OWNER_CONSTRAINT = "accounts_owner_user_id_unique";
+export const SUBDOMAIN_CONSTRAINTS = new Set(["clinics_subdomain_unique", "domain_lookups_pkey"]);
+export const OWNER_CONSTRAINT = "accounts_owner_user_id_unique";
 
 // Drizzle wraps the pg error, so look through the `cause` chain for a
 // unique violation and report which constraint it hit.
-function uniqueViolationConstraint(error: unknown): string | undefined {
+export function uniqueViolationConstraint(error: unknown): string | undefined {
   let current: unknown = error;
   while (current instanceof Error) {
     const pgError = current as Error & { code?: string; constraint?: string };
@@ -41,7 +41,7 @@ function uniqueViolationConstraint(error: unknown): string | undefined {
   return undefined;
 }
 
-function daysFromNow(days: number) {
+export function daysFromNow(days: number) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 }
 
