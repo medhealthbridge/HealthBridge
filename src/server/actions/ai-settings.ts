@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireSuperAdmin } from "@/src/server/auth";
 import { verifyProviderKey } from "@/src/server/agent/providers/verify";
 import { removeSecret, saveSecret } from "@/src/server/services/platform-secrets";
+import { setSetting } from "@/src/server/services/platform-settings";
 import { consumeRateLimit } from "@/src/server/services/rate-limit";
 import { COMPANY_ADMIN_ROUTE } from "@/src/lib/constants";
 import { removeKeySchema, saveKeySchema, type SaveKeyField } from "@/src/lib/schemas/ai-settings";
@@ -36,5 +37,12 @@ export async function removeKeyAction(data: FormData) {
   const parsed = removeKeySchema.safeParse({ name: data.get("name") });
   if (!parsed.success) return;
   await removeSecret(parsed.data.name);
+  revalidatePath(PATH);
+}
+
+/** The founder's statement that their AI provider keys are on a plan that doesn't train on prompts. Off until made, which keeps every tenant's patient-data assistant unavailable. */
+export async function setPatientDataAiAction(data: FormData) {
+  const admin = await requireSuperAdmin();
+  await setSetting("allow_patient_data_ai", data.get("allow") === "true" ? "true" : "false", admin.id);
   revalidatePath(PATH);
 }

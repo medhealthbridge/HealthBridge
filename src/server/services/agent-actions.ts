@@ -1,10 +1,10 @@
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/src/server/db/client";
 import { agentActions, user } from "@/src/server/db/schema";
 import { TENANT_TIERS } from "@/src/lib/schemas/tenant";
 import { AlreadyOnTeamError, inviteAndEmail, setPlatformStaffActive } from "./platform-staff";
-import { changeTenantTier, setTenantSubscriptionStatus, TierTooSmallError } from "./tenant-admin";
+import { changeTenantTier, setTenantAiAccess, setTenantSubscriptionStatus, TierTooSmallError } from "./tenant-admin";
 
 const TTL_MINUTES = 15;
 
@@ -29,6 +29,13 @@ const ACTIONS = {
     run: async (_actor: { id: string; name: string }, args: { accountId: string; status: "masterlocked" | "active" }) => {
       await setTenantSubscriptionStatus(args.accountId, args.status);
       return args.status === "masterlocked" ? "Tenant locked. Their data is kept." : "Tenant unlocked.";
+    },
+  },
+  set_tenant_ai_access: {
+    schema: z.object({ accountId: z.uuid(), enabled: z.boolean() }),
+    run: async (_actor: { id: string; name: string }, args: { accountId: string; enabled: boolean }) => {
+      await setTenantAiAccess(args.accountId, args.enabled);
+      return args.enabled ? "AI assistant granted to the tenant." : "AI assistant revoked for the tenant.";
     },
   },
   change_tenant_tier: {
@@ -63,7 +70,7 @@ export async function confirmAction(actor: { id: string; name: string }, actionI
   const [claimed] = await db
     .update(agentActions)
     .set({ status: "executed", decidedAt: new Date() })
-    .where(and(eq(agentActions.id, actionId), eq(agentActions.userId, actor.id), eq(agentActions.status, "pending"), gt(agentActions.expiresAt, new Date())))
+    .where(and(eq(agentActions.id, actionId), eq(agentActions.userId, actor.id), isNull(agentActions.clinicId), eq(agentActions.status, "pending"), gt(agentActions.expiresAt, new Date())))
     .returning({ kind: agentActions.kind, args: agentActions.args });
   if (!claimed) return { ok: false, message: "That request expired or was already handled." };
 
@@ -91,7 +98,7 @@ export async function cancelAction(userId: string, actionId: string) {
   await db
     .update(agentActions)
     .set({ status: "cancelled", decidedAt: new Date() })
-    .where(and(eq(agentActions.id, actionId), eq(agentActions.userId, userId), eq(agentActions.status, "pending")));
+    .where(and(eq(agentActions.id, actionId), eq(agentActions.userId, userId), isNull(agentActions.clinicId), eq(agentActions.status, "pending")));
 }
 
 export async function userNameOf(userId: string) {

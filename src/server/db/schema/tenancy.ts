@@ -3,6 +3,7 @@ import {
   uuid,
   text,
   integer,
+  boolean,
   timestamp,
   jsonb,
   numeric,
@@ -25,6 +26,8 @@ export const accounts = pgTable("accounts", {
   id: uuid("id").primaryKey().defaultRandom(),
   ownerUserId: text("owner_user_id").notNull().unique().references(() => user.id),
   companyName: text("company_name").notNull(),
+  // Granted by the company admin; the owner's AI assistant stays off until then.
+  aiAssistantEnabled: boolean("ai_assistant_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

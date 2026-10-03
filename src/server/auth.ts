@@ -230,6 +230,30 @@ export const requireActiveClinic = cache(async () => {
   return { user, clinic, clinics };
 });
 
+/**
+ * The signed-in user and the clinic this request is for, as data instead of a
+ * redirect: API routes answer with JSON. Null for no session, no clinic, or a
+ * clinic subdomain the user doesn't work at.
+ */
+export async function getAgentClinic() {
+  const current = await getSession();
+  if (!current?.user.emailVerified) return null;
+  const memberships = await getMemberships(current.user.id);
+  if (memberships.length === 0) return null;
+  const clinics = await describeStaffClinics(memberships);
+  const host = (await headers()).get("host");
+  const slug = tenantSlugFromHost(host);
+  const customClinicId = !slug && host && isCustomHost(host) ? await clinicIdForCustomDomain(host) : null;
+  const clinic = slug
+    ? clinics.find((candidate) => candidate.subdomain === slug)
+    : customClinicId
+      ? clinics.find((candidate) => candidate.id === customClinicId)
+      : isCustomHost(host)
+        ? undefined
+        : clinics[0];
+  return clinic ? { user: current.user, clinic } : null;
+}
+
 /** Signed-in user who hasn't created a workspace yet; owners go to their console. */
 export async function requireOnboardingPending() {
   const current = await requireUser();

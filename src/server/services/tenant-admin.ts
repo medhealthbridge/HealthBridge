@@ -108,3 +108,11 @@ export async function changeTenantTier(accountId: string, tier: keyof typeof SLO
     if (rows.length === 0) throw new Error("No subscription for that account.");
   });
 }
+
+/** Grants or revokes the tenant owner's AI assistant. Company admin only. */
+export async function setTenantAiAccess(accountId: string, enabled: boolean) {
+  const rows = await withPlatformAdmin((tx) =>
+    tx.update(accounts).set({ aiAssistantEnabled: enabled }).where(eq(accounts.id, accountId)).returning({ id: accounts.id }),
+  );
+  if (rows.length === 0) throw new Error("No such account.");
+}

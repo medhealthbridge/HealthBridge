@@ -18,6 +18,15 @@ export function defineTool<S extends z.ZodType>(tool: {
   return tool as AgentTool;
 }
 
+/** A prepared change shown to the person with Confirm / Cancel. `stepUp` says what they must do first. */
+export type Proposal = {
+  id: string;
+  summary: string;
+  stepUp?: "none" | "unlock" | "password+typed";
+  /** For deletes: the text the person must type back (the record's MRN). */
+  phrase?: string;
+};
+
 export type AgentTurn = { role: "user" | "assistant"; content: string };
 
 export type AgentResult = {

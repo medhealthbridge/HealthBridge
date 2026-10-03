@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gte, ilike, inArray, isNull, lt, max, or } from "drizzle-orm";
+import { and, asc, count, eq, gte, ilike, inArray, isNull, lt, max, or, sql } from "drizzle-orm";
 import { withTenant } from "@/src/server/db/client";
 import { appointments, auditLogs, clinicStaff, clinics, patients, user } from "@/src/server/db/schema";
 
@@ -7,6 +7,7 @@ export type StaffRole = "owner" | "practitioner" | "assistant";
 /** One clinic the signed-in user works at, with the role they hold there. */
 export type StaffClinic = {
   id: string;
+  accountId: string;
   staffId: string;
   role: StaffRole;
   name: string;
@@ -95,7 +96,7 @@ export async function describeStaffClinics(
     memberships.map((membership) =>
       withTenant(membership.clinicId, async (tx) => {
         const [row] = await tx
-          .select({ name: clinics.name, subdomain: clinics.subdomain, timezone: clinics.timezone })
+          .select({ accountId: clinics.accountId, name: clinics.name, subdomain: clinics.subdomain, timezone: clinics.timezone })
           .from(clinics)
           .where(eq(clinics.id, membership.clinicId))
           .limit(1);
@@ -117,8 +118,10 @@ function fullName(row: { firstName: string | null; lastName: string | null; disp
 export async function listTodayAppointments(
   clinic: Pick<StaffClinic, "id" | "timezone">,
   onlyPractitionerStaffId?: string,
+  /** Any instant inside the day wanted; defaults to now (today). */
+  on: Date = new Date(),
 ): Promise<TodayAppointment[]> {
-  const { start, end } = dayBounds(clinic.timezone);
+  const { start, end } = dayBounds(clinic.timezone, on);
   return withTenant(clinic.id, async (tx) => {
     const rows = await tx
       .select({
@@ -391,3 +394,159 @@ export async function changeAppointmentStatus(
   });
 }
 
+
+/** Offset of `timezone` from UTC at an instant, in ms (positive east of Greenwich). */
+function zoneOffsetMs(timezone: string, at: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+  }).formatToParts(at);
+  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value);
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  return Math.round((asUtc - at.getTime()) / 60000) * 60000;
+}
+
+/** "2026-10-05T15:00" typed in the clinic's own time → the real instant. */
+export function clinicLocalToUtc(local: string, timezone: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local);
+  if (!match) throw new Error("Expected YYYY-MM-DDTHH:mm");
+  const [, y, mo, d, h, mi] = match.map(Number);
+  const wallAsUtc = Date.UTC(y, mo - 1, d, h, mi);
+  const firstGuess = wallAsUtc - zoneOffsetMs(timezone, new Date(wallAsUtc));
+  return new Date(wallAsUtc - zoneOffsetMs(timezone, new Date(firstGuess)));
+}
+
+export type PatientRecord = {
+  id: string;
+  mrn: string;
+  firstName: string | null;
+  lastName: string | null;
+  name: string;
+  sex: string | null;
+  dateOfBirth: string | null;
+  phone: string | null;
+  philhealth: string | null;
+  oscaId: string | null;
+  pwdId: string | null;
+  archived: boolean;
+};
+
+export const PATIENT_EDITABLE = ["firstName", "lastName", "sex", "dateOfBirth", "phone", "philhealth", "oscaId", "pwdId"] as const;
+export type PatientField = (typeof PATIENT_EDITABLE)[number];
+export type PatientChanges = Partial<Record<PatientField, string | null>>;
+
+/** One patient by MRN, archived ones only when asked for (to restore them). */
+export async function findPatientByMrn(clinicId: string, mrn: string, includeArchived = false): Promise<PatientRecord | null> {
+  return withTenant(clinicId, async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(patients)
+      .where(and(eq(patients.clinicId, clinicId), eq(patients.medicalRecordNumber, mrn), includeArchived ? undefined : isNull(patients.deletedAt)))
+      .limit(1);
+    return row
+      ? {
+          id: row.id, mrn: row.medicalRecordNumber, firstName: row.firstName, lastName: row.lastName, name: fullName(row), sex: row.sex,
+          dateOfBirth: row.dateOfBirth, phone: row.contactPhone, philhealth: row.philhealthMemberPin, oscaId: row.oscaId, pwdId: row.pwdId,
+          archived: row.deletedAt !== null,
+        }
+      : null;
+  });
+}
+
+const COLUMN: Record<PatientField, keyof typeof patients.$inferInsert> = {
+  firstName: "firstName", lastName: "lastName", sex: "sex", dateOfBirth: "dateOfBirth", phone: "contactPhone",
+  philhealth: "philhealthMemberPin", oscaId: "oscaId", pwdId: "pwdId",
+};
+
+export class StaleChangeError extends Error {}
+
+/**
+ * Edits fields on one patient. `expectedBefore` is what the person saw when they
+ * approved: if the record has changed since, nothing is written. The audit row
+ * carries the before/after of exactly the fields touched.
+ */
+export async function updatePatient(
+  clinicId: string,
+  actorUserId: string,
+  patientId: string,
+  changes: PatientChanges,
+  expectedBefore: PatientChanges,
+) {
+  const fields = Object.keys(changes) as PatientField[];
+  if (fields.length === 0) throw new Error("No changes.");
+  return withTenant(clinicId, async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(patients)
+      .where(and(eq(patients.clinicId, clinicId), eq(patients.id, patientId), isNull(patients.deletedAt)))
+      .for("update")
+      .limit(1);
+    if (!current) throw new NotFoundError("patient");
+    const read = (field: PatientField) => (current[COLUMN[field] as keyof typeof current] as string | null) ?? null;
+    if (fields.some((field) => read(field) !== (expectedBefore[field] ?? null))) throw new StaleChangeError();
+
+    const set = Object.fromEntries(fields.map((field) => [COLUMN[field], changes[field] ?? null]));
+    await tx.update(patients).set(set).where(and(eq(patients.clinicId, clinicId), eq(patients.id, patientId)));
+    await tx.insert(auditLogs).values({
+      clinicId, actorUserId, entityType: "patient", entityId: patientId, action: "update",
+      diff: { before: Object.fromEntries(fields.map((field) => [field, read(field)])), after: Object.fromEntries(fields.map((field) => [field, changes[field] ?? null])), via: "assistant" },
+    });
+  });
+}
+
+/** Archives (soft-deletes) or restores a patient. Records are never hard-deleted; the audit trail keeps both events. */
+export async function setPatientArchived(clinicId: string, actorUserId: string, patientId: string, archived: boolean) {
+  return withTenant(clinicId, async (tx) => {
+    const rows = await tx
+      .update(patients)
+      .set({ deletedAt: archived ? new Date() : null })
+      .where(and(eq(patients.clinicId, clinicId), eq(patients.id, patientId), archived ? isNull(patients.deletedAt) : sql`${patients.deletedAt} is not null`))
+      .returning({ id: patients.id });
+    if (rows.length === 0) throw new NotFoundError("patient");
+    await tx.insert(auditLogs).values({
+      clinicId, actorUserId, entityType: "patient", entityId: patientId, action: archived ? "delete" : "update",
+      diff: { after: { archived }, via: "assistant" },
+    });
+  });
+}
+
+/** A booked (not walk-in) appointment at a clinic-local time. */
+export async function bookAppointment(
+  clinic: Pick<StaffClinic, "id" | "timezone">,
+  actorUserId: string,
+  input: { patientId: string; startsAt: Date; practitionerStaffId: string | null },
+) {
+  if (input.startsAt.getTime() < Date.now() - 5 * 60_000) throw new Error("That time has passed.");
+  return withTenant(clinic.id, async (tx) => {
+    const [patient] = await tx
+      .select({ id: patients.id })
+      .from(patients)
+      .where(and(eq(patients.clinicId, clinic.id), eq(patients.id, input.patientId), isNull(patients.deletedAt)))
+      .limit(1);
+    if (!patient) throw new NotFoundError("patient");
+    const [row] = await tx
+      .insert(appointments)
+      .values({
+        clinicId: clinic.id, patientId: input.patientId, practitionerStaffId: input.practitionerStaffId,
+        startsAt: input.startsAt, endsAt: new Date(input.startsAt.getTime() + WALK_IN_MINUTES * 60_000), status: "confirmed", source: "phone",
+      })
+      .returning({ id: appointments.id });
+    await tx.insert(auditLogs).values({
+      clinicId: clinic.id, actorUserId, entityType: "appointment", entityId: row.id, action: "create",
+      diff: { after: { status: "confirmed", source: "phone", startsAt: input.startsAt.toISOString() }, via: "assistant" },
+    });
+    return row;
+  });
+}
+
+/** One appointment of this clinic, for previews. */
+export async function findAppointment(clinicId: string, appointmentId: string) {
+  return withTenant(clinicId, async (tx) => {
+    const [row] = await tx
+      .select({ id: appointments.id, status: appointments.status, startsAt: appointments.startsAt, firstName: patients.firstName, lastName: patients.lastName, displayName: patients.displayName })
+      .from(appointments)
+      .innerJoin(patients, and(eq(patients.clinicId, appointments.clinicId), eq(patients.id, appointments.patientId)))
+      .where(and(eq(appointments.clinicId, clinicId), eq(appointments.id, appointmentId), isNull(appointments.deletedAt)))
+      .limit(1);
+    return row ? { id: row.id, status: row.status as AppointmentStatus, startsAt: row.startsAt, patientName: fullName(row) } : null;
+  });
+}

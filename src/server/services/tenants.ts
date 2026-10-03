@@ -18,6 +18,8 @@ export type TenantRow = {
   /** The same date as `renews`, as a Date, for calculations. */
   renewsAt: Date | null;
   joined: string;
+  /** Whether the owner's AI assistant has been granted. */
+  aiEnabled: boolean;
 };
 
 /** Monthly price in pesos per tier (landing page pricing); enterprise is quoted per deal. */
@@ -50,6 +52,7 @@ export async function listTenants(): Promise<TenantRow[]> {
         id: accounts.id,
         name: accounts.companyName,
         createdAt: accounts.createdAt,
+        aiEnabled: accounts.aiAssistantEnabled,
         email: user.email,
         tier: subscriptions.tier,
         status: subscriptions.status,
@@ -82,6 +85,7 @@ export async function listTenants(): Promise<TenantRow[]> {
       renews: renewsAt ? date.format(renewsAt) : "—",
       renewsAt: renewsAt ?? null,
       joined: date.format(row.createdAt),
+      aiEnabled: row.aiEnabled,
     };
   });
 }

@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import { requireSuperAdmin } from "@/src/server/auth";
 import { PageHeader } from "@/src/components/console/page-header";
 import { secretStatuses } from "@/src/server/services/platform-secrets";
+import { patientDataAiAllowed } from "@/src/server/services/platform-settings";
+import { PatientDataCard } from "./_components/patient-data-card";
 import { ProviderKeyCard } from "./_components/provider-key-card";
 
 export const metadata: Metadata = { title: "AI settings" };
 
 export default async function AiSettingsPage() {
   await requireSuperAdmin();
-  const status = await secretStatuses();
+  const [status, patientData] = await Promise.all([secretStatuses(), patientDataAiAllowed()]);
 
   return (
     <>
@@ -28,6 +30,7 @@ export default async function AiSettingsPage() {
         help="From the Anthropic Console. Used only if Gemini is unavailable or has no key."
         status={status.anthropic_api_key}
       />
+      <PatientDataCard allowed={patientData} />
       <p className="text-xs text-console-muted">
         Keys are stored encrypted and only the last four characters are ever shown. Pasting a new key replaces the old one.
       </p>

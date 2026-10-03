@@ -34,7 +34,12 @@ export const BRANCHES: Branch[] = [
 ];
 
 export const CLINIX_ADMIN_NAV: NavGroup[] = [
-  { items: [{ href: route(), label: "Overview", icon: "overview" }] },
+  {
+    items: [
+      { href: route(), label: "Overview", icon: "overview" },
+      { href: route("/assistant"), label: "Assistant", icon: "assistant" },
+    ],
+  },
   {
     label: "Clinical",
     items: [

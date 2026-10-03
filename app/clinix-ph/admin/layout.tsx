@@ -13,6 +13,7 @@ import {
   CLINIX_SEARCH_PLACEHOLDER,
 } from "@/src/lib/mock-data/clinix-admin";
 import { initialsOf } from "@/src/lib/utils";
+import { aiGrantedFor } from "@/src/server/services/ai-access";
 import { BranchProvider, type ConsoleBranch } from "./_components/branch-context";
 import { BranchSwitcher } from "./_components/branch-switcher";
 import { ClinicAppLink } from "./_components/clinic-app-link";
@@ -27,6 +28,8 @@ const ALL_BRANCHES: ConsoleBranch = { key: "all", name: "All branches", initial:
 
 // The demo nav carries invented counts ("3 low-stock items"). On a real clinic
 // those would read as real alerts, so the badges are dropped until they are.
+const ASSISTANT_HREF = `${CLINIX_ROUTES.admin}/assistant`;
+
 const NAV = CLINIX_ADMIN_NAV.map((group) => ({
   ...group,
   items: group.items.map((item) => ({ href: item.href, label: item.label, shortLabel: item.shortLabel, icon: item.icon })),
@@ -60,6 +63,10 @@ export default async function ClinixAdminLayout({ children }: { children: React.
     redirect(ownDomain ? CLINIX_ROUTES.openDomain : clinicConsoleUrl(workspace.clinics[0].subdomain));
   }
 
+  // The assistant is offered only to an account the company admin has granted it to.
+  const assistantGranted = await aiGrantedFor(workspace.clinics[0].accountId);
+  const nav = NAV.map((group) => ({ ...group, items: group.items.filter((item) => assistantGranted || item.href !== ASSISTANT_HREF) }));
+
   const branches: ConsoleBranch[] = workspace.clinics.map((clinic) => ({
     key: clinic.subdomain,
     name: clinic.name,
@@ -73,7 +80,7 @@ export default async function ClinixAdminLayout({ children }: { children: React.
         initialTheme={await readConsoleTheme()}
         brand={{ initial: initialsOf(workspace.companyName).slice(0, 1), name: workspace.companyName, kicker: "Owner console" }}
         user={{ initials: initialsOf(user.name), name: user.name }}
-        nav={NAV}
+        nav={nav}
         searchPlaceholder={CLINIX_SEARCH_PLACEHOLDER}
         quickActions={CLINIX_QUICK_ACTIONS}
         notifications={[]}

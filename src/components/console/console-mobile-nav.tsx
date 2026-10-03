@@ -73,7 +73,7 @@ export function ConsoleMobileNav({ nav, user, theme, onToggleTheme, slot }: Cons
       </nav>
 
       <ConsoleDialog open={moreOpen} onClose={() => setMoreOpen(false)} label="More" placement="bottom">
-        <div className="flex flex-col gap-3 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 pb-2">
           <div className="flex items-center gap-2.5">
             <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-console-info text-xs font-bold text-console-on-accent">
               {user.initials}
@@ -105,16 +105,17 @@ export function ConsoleMobileNav({ nav, user, theme, onToggleTheme, slot }: Cons
               </div>
             );
           })}
-          <div className="mt-1 flex gap-2 border-t border-console-line pt-3">
-            <button type="button" onClick={onToggleTheme} className={consoleButtonClass("secondary", "md", "flex-1")}>
-              <ThemeGlyph aria-hidden="true" className="size-4" />
-              {theme === "dark" ? "Dark" : "Light"}
-            </button>
-            <SignOutButton className={consoleButtonClass("secondary", "md", "flex-1")}>
-              <LogOut aria-hidden="true" className="size-4" />
-              Log out
-            </SignOutButton>
-          </div>
+        </div>
+        {/* Outside the scrolling list so theme and log out never slide out of reach. */}
+        <div className="flex shrink-0 gap-2 border-t border-console-line bg-console-panel p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <button type="button" onClick={onToggleTheme} className={consoleButtonClass("secondary", "md", "flex-1")}>
+            <ThemeGlyph aria-hidden="true" className="size-4" />
+            {theme === "dark" ? "Dark" : "Light"}
+          </button>
+          <SignOutButton className={consoleButtonClass("secondary", "md", "flex-1")}>
+            <LogOut aria-hidden="true" className="size-4" />
+            Log out
+          </SignOutButton>
         </div>
       </ConsoleDialog>
     </>

@@ -1,5 +1,6 @@
 import { pgTable, uuid, text, integer, jsonb, timestamp, index } from "drizzle-orm/pg-core";
 import { user } from "./auth";
+import { clinics } from "./tenancy";
 
 export const AGENT_ACTION_STATUSES = ["pending", "executed", "cancelled", "failed"] as const;
 export type AgentActionStatus = (typeof AGENT_ACTION_STATUSES)[number];
@@ -15,7 +16,10 @@ export const agentActions = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id").notNull().references(() => user.id),
-    kind: text("kind").notNull(), // 'invite_admin' | 'set_staff_active' | 'set_tenant_status' | 'change_tenant_tier'
+    // Set for a clinic owner's proposal (the clinic it may touch); null for company-admin ones.
+    clinicId: uuid("clinic_id").references(() => clinics.id),
+    kind: text("kind").notNull(), // e.g. 'invite_admin', 'update_patient', 'archive_patient'
+    risk: text("risk").$type<"create" | "edit" | "delete">().notNull().default("edit"),
     args: jsonb("args").notNull(),
     summary: text("summary").notNull(),
     status: text("status").$type<AgentActionStatus>().notNull().default("pending"),
@@ -56,6 +60,14 @@ export const platformSecrets = pgTable("platform_secrets", {
   key: text("key").$type<SecretKey>().primaryKey(),
   valueEncrypted: text("value_encrypted").notNull(),
   last4: text("last4").notNull(),
+  updatedByUserId: text("updated_by_user_id").notNull().references(() => user.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Company-wide switches (text values), e.g. whether patient data may be sent to an AI provider. Global; founder-only. */
+export const platformSettings = pgTable("platform_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
   updatedByUserId: text("updated_by_user_id").notNull().references(() => user.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

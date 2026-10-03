@@ -5,18 +5,31 @@ import { ArrowUp } from "lucide-react";
 import { CONSOLE_INPUT } from "@/src/components/console/console-input";
 import { PANEL } from "@/src/components/console/panel";
 
-type Proposal = { id: string; summary: string };
+type Proposal = { id: string; summary: string; stepUp?: "none" | "unlock" | "password+typed"; phrase?: string };
 type Turn = { role: "user" | "assistant"; content: string; by?: string; proposals?: Proposal[] };
 type Usage = { aiCalls: number; ruleAnswers: number; tokens: number; limit: number };
 
 const BY_LABEL: Record<string, string> = { rules: "Instant answer", gemini: "Gemini", anthropic: "Claude" };
 
-export function AssistantChat({ suggestions, aiConfigured, usage }: { suggestions: string[]; aiConfigured: boolean; usage: Usage }) {
+type AssistantChatProps = {
+  /** POST endpoint for a question, and for confirm/cancel of a prepared change. */
+  endpoint: string;
+  confirmEndpoint: string;
+  suggestions: string[];
+  aiConfigured: boolean;
+  usage: Usage;
+  placeholder?: string;
+};
+
+export function AssistantChat({ endpoint, confirmEndpoint, suggestions, aiConfigured, usage, placeholder = "Ask a question…" }: AssistantChatProps) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [decided, setDecided] = useState<Record<string, string>>({});
+  // A card that needs a password (and, for archiving, the typed MRN) shows its message here.
+  const [needs, setNeeds] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState("");
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => end.current?.scrollIntoView({ block: "end" }), [turns, pending]);
@@ -30,7 +43,7 @@ export function AssistantChat({ suggestions, aiConfigured, usage }: { suggestion
     setError("");
     setPending(true);
     try {
-      const response = await fetch("/api/admin/agent", {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // Only the last 20 turns travel; the server keeps no conversation.
@@ -46,18 +59,22 @@ export function AssistantChat({ suggestions, aiConfigured, usage }: { suggestion
     }
   }
 
-  async function decide(actionId: string, decision: "confirm" | "cancel") {
-    setDecided((current) => ({ ...current, [actionId]: "…" }));
+  /** Confirm or cancel a prepared change. A reply asking for a password or the typed MRN reopens the card's fields instead of ending it. */
+  async function decide(proposal: Proposal, decision: "confirm" | "cancel", extra: { password?: string; typed?: string } = {}) {
+    setBusy(proposal.id);
     try {
-      const response = await fetch("/api/admin/agent/confirm", {
+      const response = await fetch(confirmEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actionId, decision }),
+        body: JSON.stringify({ actionId: proposal.id, decision, ...extra }),
       });
-      const data: { message?: string; error?: string } = await response.json().catch(() => ({}));
-      setDecided((current) => ({ ...current, [actionId]: data.message ?? data.error ?? "Something went wrong." }));
+      const data: { ok?: boolean; message?: string; error?: string; need?: "password" | "typed" } = await response.json().catch(() => ({}));
+      if (data.need) setNeeds((current) => ({ ...current, [proposal.id]: data.message ?? "" }));
+      else setDecided((current) => ({ ...current, [proposal.id]: data.message ?? data.error ?? "Something went wrong." }));
     } catch {
-      setDecided((current) => ({ ...current, [actionId]: "Couldn't reach the server. Nothing was changed." }));
+      setDecided((current) => ({ ...current, [proposal.id]: "Couldn't reach the server. Nothing was changed." }));
+    } finally {
+      setBusy("");
     }
   }
 
@@ -98,21 +115,7 @@ export function AssistantChat({ suggestions, aiConfigured, usage }: { suggestion
             </p>
             {turn.by && <span className="text-[10px] text-console-subtle">{BY_LABEL[turn.by] ?? turn.by}</span>}
             {turn.proposals?.map((proposal) => (
-              <div key={proposal.id} className="flex max-w-[85%] flex-col gap-2 rounded-xl border border-console-accent/40 bg-console-accent/8 p-3">
-                <p className="text-[13px] font-semibold">{proposal.summary}</p>
-                {decided[proposal.id] ? (
-                  <p role="status" className="text-xs text-console-muted">{decided[proposal.id]}</p>
-                ) : (
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => void decide(proposal.id, "confirm")} className="min-h-11 cursor-pointer rounded-lg bg-console-accent px-3 text-xs font-semibold text-console-on-accent hover:bg-console-accent/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-console-accent md:min-h-8">
-                      Confirm
-                    </button>
-                    <button type="button" onClick={() => void decide(proposal.id, "cancel")} className="min-h-11 cursor-pointer rounded-lg border border-console-line px-3 text-xs font-semibold hover:border-console-accent/50 focus-visible:outline-2 focus-visible:outline-console-accent md:min-h-8">
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
+              <ProposalCard key={proposal.id} proposal={proposal} outcome={decided[proposal.id]} message={needs[proposal.id]} busy={busy === proposal.id} onDecide={decide} />
             ))}
           </div>
         ))}
@@ -132,7 +135,7 @@ export function AssistantChat({ suggestions, aiConfigured, usage }: { suggestion
           onChange={(event) => setDraft(event.target.value)}
           maxLength={4000}
           autoComplete="off"
-          placeholder="Ask about tenants, revenue, staff…"
+          placeholder={placeholder}
           className={`${CONSOLE_INPUT} min-w-0 flex-1`}
         />
         <button
@@ -144,6 +147,68 @@ export function AssistantChat({ suggestions, aiConfigured, usage }: { suggestion
           <ArrowUp aria-hidden="true" className="size-4" />
         </button>
       </form>
+    </div>
+  );
+}
+
+function ProposalCard({
+  proposal,
+  outcome,
+  message,
+  busy,
+  onDecide,
+}: {
+  proposal: Proposal;
+  outcome?: string;
+  message?: string;
+  busy: boolean;
+  onDecide: (proposal: Proposal, decision: "confirm" | "cancel", extra?: { password?: string; typed?: string }) => Promise<void>;
+}) {
+  const [password, setPassword] = useState("");
+  const [typed, setTyped] = useState("");
+  // Archiving always shows both fields; an edit shows the password only when the server asks for it.
+  const askPassword = proposal.stepUp === "password+typed" || message !== undefined;
+  const askTyped = proposal.stepUp === "password+typed";
+  const ready = (!askPassword || password.length > 0) && (!askTyped || typed.trim().length > 0);
+
+  return (
+    <div className="flex w-full max-w-[85%] flex-col gap-2 rounded-xl border border-console-accent/40 bg-console-accent/8 p-3">
+      <p className="text-[13px] font-semibold">{proposal.summary}</p>
+      {outcome ? (
+        <p role="status" className="text-xs text-console-muted">{outcome}</p>
+      ) : (
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void onDecide(proposal, "confirm", { password: password || undefined, typed: typed || undefined }).then(() => setPassword(""));
+          }}
+        >
+          {askPassword && (
+            <>
+              <label className="flex flex-col gap-1 text-xs font-semibold">
+                Your password
+                <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className={`${CONSOLE_INPUT} font-normal`} />
+              </label>
+              {askTyped && (
+                <label className="flex flex-col gap-1 text-xs font-semibold">
+                  Type {proposal.phrase} to confirm
+                  <input value={typed} onChange={(event) => setTyped(event.target.value)} autoComplete="off" spellCheck={false} className={`${CONSOLE_INPUT} font-data font-normal`} />
+                </label>
+              )}
+            </>
+          )}
+          {message && <p role="alert" className="text-xs text-console-danger">{message}</p>}
+          <div className="flex gap-2">
+            <button type="submit" disabled={busy || !ready} className="min-h-11 cursor-pointer rounded-lg bg-console-accent px-3 text-xs font-semibold text-console-on-accent hover:bg-console-accent/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-console-accent disabled:cursor-not-allowed disabled:opacity-50 md:min-h-8">
+              {busy ? "Working…" : "Confirm"}
+            </button>
+            <button type="button" disabled={busy} onClick={() => void onDecide(proposal, "cancel")} className="min-h-11 cursor-pointer rounded-lg border border-console-line px-3 text-xs font-semibold hover:border-console-accent/50 focus-visible:outline-2 focus-visible:outline-console-accent disabled:opacity-50 md:min-h-8">
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

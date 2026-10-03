@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { summarizeTenants, type TenantRow } from "./tenants";
 
 const row = (over: Partial<TenantRow>): TenantRow => ({
-  key: "k", name: "A", email: "a@x.ph", tier: "Tier 1", status: "Active", clinics: 1, clinicList: [], mrr: 0, renews: "-", renewsAt: null, joined: "-", ...over,
+  key: "k", name: "A", email: "a@x.ph", tier: "Tier 1", status: "Active", clinics: 1, clinicList: [], mrr: 0, renews: "-", renewsAt: null, joined: "-", aiEnabled: false, ...over,
 });
 
 describe("summarizeTenants", () => {

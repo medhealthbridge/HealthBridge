@@ -5,9 +5,7 @@ import { listPlatformPeople } from "@/src/server/services/platform-staff";
 import { listTenants, summarizeTenants, type TenantRow } from "@/src/server/services/tenants";
 import { TENANT_TIERS } from "@/src/lib/schemas/tenant";
 import { TENANT_STATUSES } from "@/src/lib/tenant-status";
-import { defineTool, type AgentTool } from "./core";
-
-export type Proposal = { id: string; summary: string };
+import { defineTool, type AgentTool, type Proposal } from "./core";
 
 export type AdminToolContext = {
   userId: string;
@@ -113,6 +111,16 @@ function proposeTools(ctx: AdminToolContext): AgentTool[] {
         const picked = pickTenant(await listTenants(), tenantName);
         if ("problem" in picked) return { proposed: false, note: picked.problem };
         return propose("set_tenant_status", { accountId: picked.tenant.key, status }, `${status === "masterlocked" ? "Lock" : "Unlock"} ${picked.tenant.name}.`);
+      },
+    }),
+    defineTool({
+      name: "propose_set_tenant_ai_access",
+      description: "Prepare to grant or revoke a tenant owner's AI assistant (their own clinic's data only). Nothing changes until the user confirms.",
+      input: z.object({ tenantName: z.string().trim().min(2).max(100), enabled: z.boolean() }),
+      run: async ({ tenantName, enabled }) => {
+        const picked = pickTenant(await listTenants(), tenantName);
+        if ("problem" in picked) return { proposed: false, note: picked.problem };
+        return propose("set_tenant_ai_access", { accountId: picked.tenant.key, enabled }, `${enabled ? "Grant" : "Revoke"} the AI assistant for ${picked.tenant.name}.`);
       },
     }),
     defineTool({

@@ -1,15 +1,7 @@
-import { configuredProviders, runProviderChain } from "./providers";
-import { buildAdminTools, type Proposal } from "./admin-tools";
+import { buildAdminTools } from "./admin-tools";
 import { answerByRules } from "./rules";
-import type { AgentTurn } from "./core";
-import { dailyAiLimit, recordAgentUsage, usageToday } from "@/src/server/services/agent-usage";
-
-export type AssistantReply = {
-  reply: string;
-  /** Who answered: the free rules, or an AI provider. */
-  by: "rules" | "gemini" | "anthropic";
-  proposals: Proposal[];
-};
+import type { AgentTurn, Proposal } from "./core";
+import { runAssistant, type AssistantReply } from "./assistant";
 
 function systemPrompt(today: string, canPropose: boolean) {
   return `You are the DataBridgeSol company-admin assistant. You help the platform's owner and team understand their business: client accounts (tenants), plans and revenue, team members and invitations, and custom-domain orders.
@@ -28,52 +20,19 @@ Rules:
 
 const NO_AI = "That needs the AI layer, which isn't switched on yet (paste a Gemini key under AI settings). The questions I answer without it: business summary, trials, past due, domain orders, your team, and tenant details.";
 
-/**
- * Three layers, cheapest first: instant rules (free), then Gemini, then Claude if
- * configured. Each answer is logged as a usage row (layer and tokens only).
- */
+export const ADMIN_FEATURE = "admin_assistant";
+
 export async function askAdminAssistant(input: { userId: string; canPropose: boolean; history: AgentTurn[] }): Promise<AssistantReply> {
   const proposals: Proposal[] = [];
-  const tools = buildAdminTools({ userId: input.userId, canPropose: input.canPropose, proposals });
-  const question = input.history.at(-1)?.content ?? "";
-
-  const byRules = await answerByRules(question, async (name, args) => {
-    const tool = tools.find((candidate) => candidate.name === name);
-    if (!tool) throw new Error(`Unknown tool ${name}`);
-    return tool.run((tool.input.parse(args ?? {})) as never);
-  });
-  if (byRules !== null) {
-    await recordAgentUsage({ userId: input.userId, layer: "rule" });
-    return { reply: byRules, by: "rules", proposals };
-  }
-
-  const providers = await configuredProviders();
-  if (providers.length === 0) return { reply: NO_AI, by: "rules", proposals };
-
-  const { aiCalls } = await usageToday(input.userId);
-  if (aiCalls >= dailyAiLimit()) {
-    return { reply: "You've reached today's AI limit. The instant answers (summary, trials, past due, team, domain orders, tenant details) still work.", by: "rules", proposals };
-  }
-
-  const today = new Date().toLocaleDateString("en-PH", { dateStyle: "full", timeZone: "Asia/Manila" });
-  const result = await runProviderChain(providers, {
-    system: systemPrompt(today, input.canPropose),
-    tools,
+  return runAssistant({
+    feature: ADMIN_FEATURE,
+    userId: input.userId,
     history: input.history,
-    onToolCall: (name) => console.info(`[agent] tool ${name}`),
+    tools: buildAdminTools({ userId: input.userId, canPropose: input.canPropose, proposals }),
+    proposals,
+    system: systemPrompt(new Date().toLocaleDateString("en-PH", { dateStyle: "full", timeZone: "Asia/Manila" }), input.canPropose),
+    rules: answerByRules,
+    noAiMessage: NO_AI,
+    limitMessage: "You've reached today's AI limit. The instant answers (summary, trials, past due, team, domain orders, tenant details) still work.",
   });
-  // Token counts only: no prompts, answers or tool data in the logs or the ledger.
-  await recordAgentUsage({ userId: input.userId, layer: "ai", provider: result.provider, model: result.model, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens });
-  console.info(`[agent] ${result.provider} answered in ${result.steps} step(s), ${result.usage.inputTokens} in / ${result.usage.outputTokens} out, ${result.stopped}`);
-
-  const reply =
-    result.stopped === "refused" ? "I can't help with that request."
-    : result.stopped === "step_limit" ? "That took too many steps. Try a narrower question."
-    : result.text || "I don't have an answer for that.";
-  return { reply, by: result.provider, proposals };
-}
-
-/** Whether any layer beyond the free rules is available. */
-export async function aiLayerConfigured() {
-  return (await configuredProviders()).length > 0;
 }

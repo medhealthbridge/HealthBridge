@@ -4,10 +4,10 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { APIError } from "better-auth/api";
-import { auth, requirePlatformAdmin } from "@/src/server/auth";
+import { auth, requirePlatformAdmin, requireSuperAdmin } from "@/src/server/auth";
 import { SubdomainTakenError, WorkspaceExistsError } from "@/src/server/services/onboarding";
 import { consumeRateLimit } from "@/src/server/services/rate-limit";
-import { createTenant } from "@/src/server/services/tenant-admin";
+import { createTenant, setTenantAiAccess } from "@/src/server/services/tenant-admin";
 import { CLINIX_ROUTES, COMPANY_ADMIN_ROUTE } from "@/src/lib/constants";
 import { newTenantSchema, type NewTenantField } from "@/src/lib/schemas/tenant";
 import type { FormState } from "@/src/types/form-state";
@@ -50,4 +50,14 @@ export async function createTenantAction(_prev: NewTenantState, data: FormData):
 
   revalidatePath(`${COMPANY_ADMIN_ROUTE}/tenants`);
   return { created: { company: parsed.data.companyName, email: parsed.data.ownerEmail, emailed } };
+}
+
+/** Founder-only switch for a tenant owner's AI assistant. Revoking takes effect immediately, including on prepared changes. */
+export async function setTenantAiAccessAction(data: FormData): Promise<{ message?: string }> {
+  await requireSuperAdmin();
+  const parsed = z.object({ accountId: z.uuid(), enabled: z.enum(["true", "false"]) }).safeParse({ accountId: data.get("accountId"), enabled: data.get("enabled") });
+  if (!parsed.success) return { message: "That change isn't allowed." };
+  await setTenantAiAccess(parsed.data.accountId, parsed.data.enabled === "true");
+  revalidatePath(`${COMPANY_ADMIN_ROUTE}/tenants`);
+  return {};
 }

@@ -10,11 +10,12 @@ function startOfDay(now = new Date()) {
 
 export const dailyAiLimit = () => Number(process.env.AGENT_DAILY_AI_LIMIT ?? 100);
 
-type UsageEntry = { userId: string; layer: "rule" | "ai"; provider?: string; model?: string; inputTokens?: number; outputTokens?: number };
+type UsageEntry = { userId: string; feature: string; layer: "rule" | "ai"; provider?: string; model?: string; inputTokens?: number; outputTokens?: number };
 
 export async function recordAgentUsage(entry: UsageEntry) {
   await db.insert(agentUsage).values({
     userId: entry.userId,
+    feature: entry.feature,
     layer: entry.layer,
     provider: entry.provider,
     model: entry.model,
@@ -25,11 +26,11 @@ export async function recordAgentUsage(entry: UsageEntry) {
 
 export type UsageToday = { aiCalls: number; ruleAnswers: number; tokens: number; limit: number };
 
-export async function usageToday(userId: string): Promise<UsageToday> {
+export async function usageToday(userId: string, feature: string): Promise<UsageToday> {
   const rows = await db
     .select({ layer: agentUsage.layer, calls: sql<number>`count(*)::int`, tokens: sql<number>`coalesce(sum(${agentUsage.inputTokens} + ${agentUsage.outputTokens}), 0)::int` })
     .from(agentUsage)
-    .where(and(eq(agentUsage.userId, userId), gte(agentUsage.createdAt, startOfDay())))
+    .where(and(eq(agentUsage.userId, userId), eq(agentUsage.feature, feature), gte(agentUsage.createdAt, startOfDay())))
     .groupBy(agentUsage.layer);
   const ai = rows.find((row) => row.layer === "ai");
   return { aiCalls: ai?.calls ?? 0, ruleAnswers: rows.find((row) => row.layer === "rule")?.calls ?? 0, tokens: ai?.tokens ?? 0, limit: dailyAiLimit() };

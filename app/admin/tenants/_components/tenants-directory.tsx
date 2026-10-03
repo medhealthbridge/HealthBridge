@@ -10,13 +10,14 @@ import { Pill } from "@/src/components/console/pill";
 import { TENANT_STATUS_TONE, TENANT_STATUSES, type TenantStatus } from "@/src/lib/tenant-status";
 import type { TenantRow } from "@/src/server/services/tenants";
 import { formatPeso } from "@/src/lib/utils";
+import { AiAccessSwitch } from "./ai-access-switch";
 import { NewTenantDialog } from "./new-tenant-dialog";
 import { TenantDrawer } from "./tenant-drawer";
 
 type StatusFilter = "All" | TenantStatus;
 
 /** Header filters, the tenant table and the tenant drawer share search/filter/selection state. */
-export function TenantsDirectory({ tenants }: { tenants: TenantRow[] }) {
+export function TenantsDirectory({ tenants, canManage }: { tenants: TenantRow[]; canManage: boolean }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("All");
   const [selected, setSelected] = useState<TenantRow | null>(null);
@@ -65,6 +66,7 @@ export function TenantsDirectory({ tenants }: { tenants: TenantRow[] }) {
             <Th numeric>Clinics</Th>
             <Th numeric>MRR</Th>
             <Th>Renews</Th>
+            <Th>AI</Th>
             <Th className="w-24">
               <span className="sr-only">Actions</span>
             </Th>
@@ -92,6 +94,12 @@ export function TenantsDirectory({ tenants }: { tenants: TenantRow[] }) {
               <Td numeric>{tenant.mrr ? formatPeso(tenant.mrr) : "—"}</Td>
               <Td className="font-data text-xs text-console-muted">{tenant.renews}</Td>
               <Td>
+                {/* A row click opens the drawer; the switch must not. */}
+                <span onClick={(event) => event.stopPropagation()}>
+                  <AiAccessSwitch accountId={tenant.key} name={tenant.name} enabled={tenant.aiEnabled} canManage={canManage} />
+                </span>
+              </Td>
+              <Td>
                 <RowActions>
                   <ConsoleButton size="sm" onClick={() => setSelected(tenant)} aria-label={`View ${tenant.name}`}>
                     View
@@ -102,7 +110,7 @@ export function TenantsDirectory({ tenants }: { tenants: TenantRow[] }) {
           ))}
           {rows.length === 0 && (
             <tr>
-              <Td colSpan={7} className="py-6 text-center text-console-subtle">
+              <Td colSpan={8} className="py-6 text-center text-console-subtle">
                 {tenants.length === 0 ? "No tenants have signed up yet." : "No tenants match these filters."}
               </Td>
             </tr>
