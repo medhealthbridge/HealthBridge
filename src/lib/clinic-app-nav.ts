@@ -39,6 +39,7 @@ export function appNav(role: AppRole): NavGroup[] {
       { href: `${home}/queue`, label: "Queue", icon: "queue" },
       { href: `${home}/appointments`, label: "Appointments", shortLabel: "Calendar", icon: "appointments" },
       { href: `${home}/patients`, label: "Patients", icon: "patients" },
+      { href: `${home}/billing`, label: "Billing", icon: "billing" },
     ],
   };
   if (role !== "owner") return [floor];

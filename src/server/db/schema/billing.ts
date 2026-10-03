@@ -27,6 +27,8 @@ export const invoices = pgTable(
     totalCents: integer("total_cents").notNull(),
     status: text("status").notNull().default("draft"), // 'draft' | 'paid' | 'void'
     issuedAt: timestamp("issued_at", { withTimezone: true }),
+    voidReason: text("void_reason"),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
     createdByStaffId: uuid("created_by_staff_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

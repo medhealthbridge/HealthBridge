@@ -45,6 +45,7 @@ export const CLINIX_ADMIN_NAV: NavGroup[] = [
       { href: route("/patients"), label: "Patients & records", shortLabel: "Patients", icon: "patients" },
       { href: route("/appointments"), label: "Appointments & queue", shortLabel: "Queue", icon: "appointments" },
       { href: route("/services"), label: "Services & pricing", shortLabel: "Services", icon: "services" },
+      { href: route("/billing"), label: "Billing & receipts", shortLabel: "Billing", icon: "billing" },
     ],
   },
   {
