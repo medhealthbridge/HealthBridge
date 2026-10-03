@@ -29,20 +29,20 @@ export const COMPANY_NAV: NavGroup[] = [
     label: "Accounts",
     items: [
       { href: route("/tenants"), label: "Tenants", icon: "tenants", badge: "2" },
-      { href: route("/billing"), label: "Billing & revenue", icon: "billing" },
+      { href: route("/billing"), label: "Billing & revenue", shortLabel: "Billing", icon: "billing" },
     ],
   },
   {
     label: "Platform",
     items: [
-      { href: route("/modules"), label: "Module marketplace", icon: "modules" },
-      { href: route("/support"), label: "Support & delivery", icon: "support", badge: "1" },
+      { href: route("/modules"), label: "Module marketplace", shortLabel: "Modules", icon: "modules" },
+      { href: route("/support"), label: "Support & delivery", shortLabel: "Support", icon: "support", badge: "1" },
     ],
   },
   {
     label: "Company",
     items: [
-      { href: route("/staff"), label: "Company staff", icon: "staff" },
+      { href: route("/staff"), label: "Company staff", shortLabel: "Staff", icon: "staff" },
       { href: route("/feedback"), label: "Feedbacks", icon: "feedback" },
       { href: route("/audit"), label: "Audit log", icon: "audit" },
     ],

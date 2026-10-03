@@ -38,26 +38,26 @@ export const CLINIX_ADMIN_NAV: NavGroup[] = [
   {
     label: "Clinical",
     items: [
-      { href: route("/patients"), label: "Patients & records", icon: "patients" },
-      { href: route("/appointments"), label: "Appointments & queue", icon: "appointments" },
-      { href: route("/services"), label: "Services & pricing", icon: "services" },
+      { href: route("/patients"), label: "Patients & records", shortLabel: "Patients", icon: "patients" },
+      { href: route("/appointments"), label: "Appointments & queue", shortLabel: "Queue", icon: "appointments" },
+      { href: route("/services"), label: "Services & pricing", shortLabel: "Services", icon: "services" },
     ],
   },
   {
     label: "Operations",
     items: [
       { href: route("/inventory"), label: "Inventory", icon: "inventory", badge: "3" },
-      { href: route("/claims"), label: "Claims & receivables", icon: "claims", badge: "2" },
-      { href: route("/reminders"), label: "Reminders & delivery", icon: "reminders" },
+      { href: route("/claims"), label: "Claims & receivables", shortLabel: "Claims", icon: "claims", badge: "2" },
+      { href: route("/reminders"), label: "Reminders & delivery", shortLabel: "Reminders", icon: "reminders" },
     ],
   },
   {
     label: "Account",
     items: [
-      { href: route("/staff"), label: "Staff & roles", icon: "staff" },
+      { href: route("/staff"), label: "Staff & roles", shortLabel: "Staff", icon: "staff" },
       { href: route("/modules"), label: "Modules", icon: "modules" },
       { href: route("/subscription"), label: "Subscription", icon: "subscription" },
-      { href: route("/import-export"), label: "Import / Export", icon: "import-export" },
+      { href: route("/import-export"), label: "Import / Export", shortLabel: "Import", icon: "import-export" },
       { href: route("/settings"), label: "Settings", icon: "settings" },
       { href: route("/activity"), label: "Activity log", icon: "audit" },
     ],

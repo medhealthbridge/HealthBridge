@@ -67,18 +67,11 @@ export function NewTenantDialog() {
                 <input id="nt-branchCity" name="branchCity" required defaultValue={v("branchCity")} autoComplete="off" className={CONSOLE_INPUT} {...field("branchCity")} />
               </FormField>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <FormField id="nt-specialty" label="Specialty" error={errors.specialty?.[0]}>
                 <select id="nt-specialty" name="specialty" defaultValue={v("specialty") || "dental"} className={CONSOLE_INPUT}>
                   {Object.entries(SPECIALTY_LABELS).map(([key, label]) => (
                     <option key={key} value={key}>{label}</option>
-                  ))}
-                </select>
-              </FormField>
-              <FormField id="nt-tier" label="Tier" error={errors.tier?.[0]}>
-                <select id="nt-tier" name="tier" defaultValue={v("tier") || "tier_1"} className={CONSOLE_INPUT}>
-                  {TENANT_TIERS.map((tier) => (
-                    <option key={tier} value={tier}>{TIER_LABELS[tier]}</option>
                   ))}
                 </select>
               </FormField>
@@ -89,6 +82,14 @@ export function NewTenantDialog() {
                 </select>
               </FormField>
             </div>
+            <FormField id="nt-tier" label="Tier" error={errors.tier?.[0]}>
+              <select id="nt-tier" name="tier" defaultValue={v("tier") || "tier_1"} className={CONSOLE_INPUT}>
+                {TENANT_TIERS.map((tier) => (
+                  <option key={tier} value={tier}>{TIER_LABELS[tier]}</option>
+                ))}
+              </select>
+            </FormField>
+
             {state.message && <p role="alert" className="text-xs text-console-danger">{state.message}</p>}
           </div>
           <div className="flex justify-end gap-2 border-t border-console-line px-4 py-3">

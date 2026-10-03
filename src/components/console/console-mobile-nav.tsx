@@ -57,7 +57,7 @@ export function ConsoleMobileNav({ nav, user, theme, onToggleTheme, slot }: Cons
               className={`${tab} ${current ? "bg-console-accent/15 text-console-accent" : "text-console-muted active:bg-console-ink/6"}`}
             >
               <ConsoleIcon name={item.icon} className="size-5" />
-              <span className="max-w-full truncate">{item.label}</span>
+              <span className="max-w-full truncate">{item.shortLabel ?? item.label}</span>
             </Link>
           );
         })}

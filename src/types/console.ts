@@ -24,6 +24,8 @@ export type ConsoleIconName =
 export type NavItem = {
   href: string;
   label: string;
+  /** Fits under an icon in the phone bottom bar; falls back to `label`. */
+  shortLabel?: string;
   icon: ConsoleIconName;
   badge?: string;
 };

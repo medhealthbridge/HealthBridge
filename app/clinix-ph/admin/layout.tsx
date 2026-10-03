@@ -29,7 +29,7 @@ const ALL_BRANCHES: ConsoleBranch = { key: "all", name: "All branches", initial:
 // those would read as real alerts, so the badges are dropped until they are.
 const NAV = CLINIX_ADMIN_NAV.map((group) => ({
   ...group,
-  items: group.items.map((item) => ({ href: item.href, label: item.label, icon: item.icon })),
+  items: group.items.map((item) => ({ href: item.href, label: item.label, shortLabel: item.shortLabel, icon: item.icon })),
 }));
 
 // Each page repeats this check: a layout isn't re-rendered on client

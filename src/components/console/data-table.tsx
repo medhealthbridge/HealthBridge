@@ -6,7 +6,7 @@ export function TableCard({ label, header, children }: { label: string; header?:
   return (
     <div className={`${PANEL} min-w-0`}>
       {header}
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table aria-label={label} className="w-full border-collapse">
           {children}
         </table>
