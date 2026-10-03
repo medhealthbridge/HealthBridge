@@ -10,6 +10,7 @@ import type { ClinicalNote } from "@/src/server/services/clinical-notes";
 import { PatientEmailDialog } from "./patient-email-dialog";
 import { InvitePortalDialog } from "./invite-portal-dialog";
 import { NotesPanel } from "./notes-panel";
+import { PatientFieldsPanel, type PatientFieldsData } from "@/src/components/patient-fields/patient-fields-panel";
 import type { Tone } from "@/src/types/console";
 import { ageOf } from "./patients-panel";
 import { PatientDialog } from "./patient-dialog";
@@ -33,7 +34,7 @@ const Row = ({ label, value }: { label: string; value: string | null }) => (
 );
 
 /** One patient: details, visit history, and (for staff who may write) edit and archive. */
-export function PatientChartView({ chart, backHref, canWrite, notes, canWriteNotes, canInvite = false }: { chart: PatientChart; backHref: string; canWrite: boolean; /** Null for roles that don't see clinical notes (the front desk). */ notes: ClinicalNote[] | null; canWriteNotes: boolean; /** Owner and front desk may invite a patient to the read-only portal. */ canInvite?: boolean }) {
+export function PatientChartView({ chart, backHref, canWrite, notes, canWriteNotes, canInvite = false, customFields }: { chart: PatientChart; backHref: string; canWrite: boolean; /** Null for roles that don't see clinical notes (the front desk). */ notes: ClinicalNote[] | null; canWriteNotes: boolean; /** Owner and front desk may invite a patient to the read-only portal. */ canInvite?: boolean; /** The clinic's own patient fields this role may see. */ customFields?: PatientFieldsData }) {
   const { patient, visits } = chart;
   const age = ageOf(patient.dateOfBirth);
   const editable = { id: patient.id, name: patient.name, firstName: patient.firstName, lastName: patient.lastName, sex: patient.sex, dateOfBirth: patient.dateOfBirth, phone: patient.phone, philhealth: patient.philhealth, oscaId: patient.oscaId, pwdId: patient.pwdId };
@@ -70,6 +71,7 @@ export function PatientChartView({ chart, backHref, canWrite, notes, canWriteNot
             <Row label="PWD ID" value={patient.pwdId} />
           </dl>
         </Panel>
+        {customFields && <PatientFieldsPanel patientId={patient.id} data={{ ...customFields, canEdit: customFields.canEdit && !patient.archived }} />}
         <Panel>
           <PanelHeader title="Visits" />
           {visits.length === 0 ? (

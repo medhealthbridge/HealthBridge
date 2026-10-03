@@ -30,6 +30,7 @@ export function appNav(role: AppRole): NavGroup[] {
           { href: `${home}/appointments`, label: "My calendar", shortLabel: "Calendar", icon: "appointments" },
           { href: `${home}/patients`, label: "Patients", icon: "patients" },
           { href: `${home}/inventory`, label: "Inventory", icon: "inventory" },
+          { href: `${home}/patient-fields`, label: "Patient fields", shortLabel: "Fields", icon: "settings" },
         ],
       },
     ];

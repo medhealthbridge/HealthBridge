@@ -5,6 +5,8 @@ import {
   date,
   timestamp,
   jsonb,
+  boolean,
+  integer,
   index,
   uniqueIndex,
   unique,
@@ -49,6 +51,8 @@ export const patients = pgTable(
     philhealthMemberPin: text("philhealth_member_pin"),
     dataPrivacyConsentAt: timestamp("data_privacy_consent_at", { withTimezone: true }),
     portalUserId: text("portal_user_id").references(() => user.id), // patient-app login, optional
+    // Values for the clinic's own patient fields, keyed by the field's stable key (see patient_field_definitions).
+    customFields: jsonb("custom_fields").$type<Record<string, unknown>>().notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
@@ -190,6 +194,42 @@ export const patientInvites = pgTable(
       name: "patient_invites_patient_fk",
       columns: [table.clinicId, table.patientId],
       foreignColumns: [patients.clinicId, patients.id],
+    }),
+  }),
+);
+
+/**
+ * A clinic's own patient field. The owner sets the clinic's standard fields;
+ * practitioners may add "addon" fields. `key` never changes once created, so
+ * renaming a label never loses data. Retiring sets `archivedAt` (never a delete):
+ * values stay on every patient and come back if the field is restored.
+ */
+export const patientFieldDefinitions = pgTable(
+  "patient_field_definitions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    type: text("type").notNull(), // 'text' | 'long_text' | 'number' | 'date' | 'yes_no' | 'select' | 'multi_select'
+    options: jsonb("options").$type<string[]>().notNull().default([]),
+    required: boolean("required").notNull().default(false),
+    medical: boolean("medical").notNull().default(false),
+    section: text("section").notNull().default("Other details"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    scope: text("scope").notNull().default("standard"), // 'standard' (owner) | 'addon' (practitioner)
+    createdByStaffId: uuid("created_by_staff_id"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    clinicKeyIdx: uniqueIndex("patient_field_definitions_clinic_key_idx").on(table.clinicId, table.key),
+    clinicOrderIdx: index("patient_field_definitions_clinic_order_idx").on(table.clinicId, table.sortOrder),
+    createdByFk: foreignKey({
+      name: "patient_field_definitions_created_by_fk",
+      columns: [table.clinicId, table.createdByStaffId],
+      foreignColumns: [clinicStaff.clinicId, clinicStaff.id],
     }),
   }),
 );

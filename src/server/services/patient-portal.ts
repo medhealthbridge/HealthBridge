@@ -4,6 +4,8 @@ import { appointments, auditLogs, clinics, invoices, patientInvites, patients, s
 import { clinicLinkOrigin } from "@/src/lib/clinic-host";
 import { CLINIX_ROUTES, STAFF_INVITE_TTL_DAYS } from "@/src/lib/constants";
 import { NotFoundError, type StaffClinic } from "./clinic-app";
+import { listFieldDefinitions } from "./patient-fields";
+import { displayFieldValue } from "@/src/lib/patient-fields";
 import { sendPatientInviteEmail } from "./email";
 import { newSecretToken, sha256Hex } from "./tokens";
 
@@ -106,6 +108,8 @@ export type PortalRecord = {
   upcoming: PortalVisit[];
   past: PortalVisit[];
   receipts: PortalReceipt[];
+  /** The clinic's own non-medical fields that have an answer. Medical fields never reach the portal. */
+  details: { label: string; value: string }[];
 };
 
 /**
@@ -116,13 +120,15 @@ export type PortalRecord = {
 export async function getPortalRecords(userId: string): Promise<PortalRecord[]> {
   const own = await withUser(userId, (tx) =>
     tx
-      .select({ id: patients.id, clinicId: patients.clinicId, mrn: patients.medicalRecordNumber, firstName: patients.firstName, lastName: patients.lastName, displayName: patients.displayName })
+      .select({ id: patients.id, clinicId: patients.clinicId, customFields: patients.customFields, mrn: patients.medicalRecordNumber, firstName: patients.firstName, lastName: patients.lastName, displayName: patients.displayName })
       .from(patients)
       .where(and(eq(patients.portalUserId, userId), isNull(patients.deletedAt))),
   );
   return Promise.all(
-    own.map((patient) =>
-      withTenant(patient.clinicId, async (tx) => {
+    own.map(async (patient) => {
+      // Read before the clinic transaction below, so the two never nest.
+      const fields = (await listFieldDefinitions(patient.clinicId)).filter((field) => !field.archived && !field.medical);
+      return withTenant(patient.clinicId, async (tx) => {
         const [clinic] = await tx.select({ name: clinics.name, timezone: clinics.timezone }).from(clinics).where(eq(clinics.id, patient.clinicId)).limit(1);
         const visitColumns = { id: appointments.id, startsAt: appointments.startsAt, status: appointments.status, serviceName: services.name };
         const base = (statuses: string[]) =>
@@ -142,6 +148,9 @@ export async function getPortalRecords(userId: string): Promise<PortalRecord[]> 
             .orderBy(desc(invoices.createdAt))
             .limit(50),
         ]);
+        const details = fields
+          .map((field) => ({ label: field.label, value: displayFieldValue(field.type, patient.customFields[field.key]) }))
+          .filter((detail) => detail.value !== "");
         const sortAsc = (rows: typeof upcoming) => [...rows].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
         return {
           clinicName: clinic?.name ?? "Clinic",
@@ -151,9 +160,10 @@ export async function getPortalRecords(userId: string): Promise<PortalRecord[]> 
           upcoming: sortAsc(upcoming).map((row) => ({ ...row })),
           past: past.map((row) => ({ ...row })),
           receipts,
+          details,
         };
-      }),
-    ),
+      });
+    }),
   );
 }
 

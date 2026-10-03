@@ -45,6 +45,16 @@ export default async function PortalPage() {
               <h2 className="font-display text-lg font-extrabold">{record.clinicName}</h2>
               <p className="text-sm text-slate-600">{record.patientName} · {record.mrn}</p>
             </div>
+            {record.details.length > 0 && (
+              <div>
+                <h3 className="mb-1 text-sm font-bold">My details</h3>
+                <dl className="divide-y divide-slate-200">
+                  {record.details.map((detail) => (
+                    <div key={detail.label} className="flex justify-between gap-3 py-2 text-sm"><dt className="text-slate-600">{detail.label}</dt><dd className="text-right font-medium">{detail.value}</dd></div>
+                  ))}
+                </dl>
+              </div>
+            )}
             <div><h3 className="mb-1 text-sm font-bold">Upcoming</h3><Visits rows={record.upcoming} timezone={record.timezone} empty="No upcoming appointments." /></div>
             <div><h3 className="mb-1 text-sm font-bold">Past visits</h3><Visits rows={record.past} timezone={record.timezone} empty="No completed visits yet." /></div>
             <div>
