@@ -1,4 +1,3 @@
-import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
 /** One thing the assistant may do. `run` gets already-validated input and nothing else: no tenant, user or SQL from the model. */
@@ -28,81 +27,51 @@ export type AgentResult = {
   stopped: "done" | "step_limit" | "refused" | "truncated";
 };
 
-type AgentClient = Pick<Anthropic, "messages">;
-
-type RunAgentOptions = {
-  client: AgentClient;
-  model: string;
+export type ProviderRunInput = {
   system: string;
   tools: AgentTool[];
   history: AgentTurn[];
   /** Model calls allowed in one request, so a confused loop can't run up a bill. */
   maxSteps?: number;
-  maxTokens?: number;
   /** Called with the tool's name only; never its input or output. */
   onToolCall?: (name: string) => void;
 };
 
+/** A model behind the same tool loop. Throws on transport or quota errors so the next provider can answer. */
+export type AgentProvider = {
+  id: "gemini" | "anthropic";
+  model: string;
+  configured: () => boolean;
+  run: (input: ProviderRunInput) => Promise<AgentResult>;
+};
+
 const MAX_RESULT_CHARS = 20_000;
+const EMAIL = /([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Za-z]{2,})/g;
 
 /**
- * What the model sees of a tool's output. It is wrapped as data so text inside
- * it (a tenant's name, a clinic note) is never mistaken for an instruction.
+ * Hides most of every email address before text goes to an outside model: the
+ * assistant can say "j***@clinic.ph" but a free-tier provider never holds the
+ * full address. The rules layer, which calls no model, shows full addresses.
  */
-function asToolContent(value: unknown) {
-  const json = JSON.stringify(value ?? null);
-  const body = json.length > MAX_RESULT_CHARS ? `${json.slice(0, MAX_RESULT_CHARS)}…[truncated]` : json;
-  return `<tool_data>${body}</tool_data>`;
+export function redactEmails(text: string) {
+  return text.replace(EMAIL, "$1***@$2");
 }
 
-/**
- * The tool-calling loop. Stateless: the caller passes the visible conversation
- * (text only) each time, and tool calls made here are not carried between
- * requests. Tenant and user scoping is the tools' job, set up by the caller.
- */
-export async function runAgent({ client, model, system, tools, history, maxSteps = 8, maxTokens = 16_000, onToolCall }: RunAgentOptions): Promise<AgentResult> {
-  const byName = new Map(tools.map((tool) => [tool.name, tool]));
-  const toolDefs: Anthropic.Tool[] = tools.map((tool) => ({
-    name: tool.name,
-    description: tool.description,
-    input_schema: z.toJSONSchema(tool.input) as Anthropic.Tool["input_schema"],
-  }));
+/** What a model sees of a tool's output: redacted, size-capped, and labelled as data so text inside is never an instruction. */
+export function asToolContent(value: unknown) {
+  const json = redactEmails(JSON.stringify(value ?? null));
+  return `<tool_data>${json.length > MAX_RESULT_CHARS ? `${json.slice(0, MAX_RESULT_CHARS)}…[truncated]` : json}</tool_data>`;
+}
 
-  const messages: Anthropic.MessageParam[] = history.map((turn) => ({ role: turn.role, content: turn.content }));
-  const usage = { inputTokens: 0, outputTokens: 0 };
-
-  for (let step = 1; step <= maxSteps; step++) {
-    const response = await client.messages
-      .stream({ model, max_tokens: maxTokens, system, tools: toolDefs, messages, output_config: { effort: "medium" } })
-      .finalMessage();
-    usage.inputTokens += response.usage.input_tokens;
-    usage.outputTokens += response.usage.output_tokens;
-
-    const text = response.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n").trim();
-    if (response.stop_reason === "refusal") return { text: "", steps: step, usage, stopped: "refused" };
-    if (response.stop_reason === "max_tokens") return { text, steps: step, usage, stopped: "truncated" };
-    if (response.stop_reason !== "tool_use") return { text, steps: step, usage, stopped: "done" };
-
-    messages.push({ role: "assistant", content: response.content });
-    const results: Anthropic.ToolResultBlockParam[] = [];
-    for (const block of response.content) {
-      if (block.type !== "tool_use") continue;
-      onToolCall?.(block.name);
-      const tool = byName.get(block.name);
-      const parsed = tool?.input.safeParse(block.input);
-      if (!tool || !parsed?.success) {
-        results.push({ type: "tool_result", tool_use_id: block.id, is_error: true, content: "Unknown tool or invalid arguments." });
-        continue;
-      }
-      try {
-        results.push({ type: "tool_result", tool_use_id: block.id, content: asToolContent(await tool.run(parsed.data as never)) });
-      } catch (error) {
-        // The detail stays in our logs; the model only learns that it failed.
-        console.error(`[agent] tool ${tool.name} failed:`, error instanceof Error ? error.message : "unknown error");
-        results.push({ type: "tool_result", tool_use_id: block.id, is_error: true, content: "That lookup failed. Tell the user it is unavailable." });
-      }
-    }
-    messages.push({ role: "user", content: results });
+/** Validates the model's arguments, runs the tool, and hides failure detail from the model (it stays in our logs). */
+export async function runTool(tools: AgentTool[], name: string, input: unknown): Promise<{ content: string; isError: boolean }> {
+  const tool = tools.find((candidate) => candidate.name === name);
+  const parsed = tool?.input.safeParse(input);
+  if (!tool || !parsed?.success) return { content: "Unknown tool or invalid arguments.", isError: true };
+  try {
+    return { content: asToolContent(await tool.run(parsed.data as never)), isError: false };
+  } catch (error) {
+    console.error(`[agent] tool ${tool.name} failed:`, error instanceof Error ? error.message : "unknown error");
+    return { content: "That lookup failed. Tell the user it is unavailable.", isError: true };
   }
-  return { text: "", steps: maxSteps, usage, stopped: "step_limit" };
 }

@@ -57,6 +57,13 @@
       "when": 1790926383178,
       "tag": "0007_platform_staff_roles_and_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790995926015,
+      "tag": "0008_agent_actions_and_usage",
+      "breakpoints": true
     }
   ]
 }

@@ -10,11 +10,10 @@ import { auth, requireSuperAdmin } from "@/src/server/auth";
 import { db } from "@/src/server/db/client";
 import { user } from "@/src/server/db/schema";
 import { platformRoleOf } from "@/src/server/services/access";
-import { sendPlatformInviteEmail } from "@/src/server/services/email";
 import {
   AlreadyOnTeamError,
   claimInvite,
-  createPlatformInvite,
+  inviteAndEmail,
   findOpenInvite,
   ForbiddenChangeError,
   grantPlatformStaff,
@@ -23,8 +22,7 @@ import {
   setPlatformStaffActive,
 } from "@/src/server/services/platform-staff";
 import { consumeRateLimit } from "@/src/server/services/rate-limit";
-import { adminUrl } from "@/src/lib/clinic-host";
-import { ADMIN_INVITE_ROUTE, COMPANY_ADMIN_ROUTE } from "@/src/lib/constants";
+import { COMPANY_ADMIN_ROUTE } from "@/src/lib/constants";
 import { loginSchema } from "@/src/lib/schemas/auth";
 import {
   acceptInviteSchema,
@@ -50,24 +48,15 @@ export async function inviteAdminAction(_prev: InviteAdminState, data: FormData)
   const limit = await consumeRateLimit("platform-invite", inviter.id, { max: 20, windowSeconds: 60 * 60 });
   if (!limit.allowed) return { values, message: "Too many invitations sent. Try again in a while." };
 
-  let invite;
+  let sent;
   try {
-    invite = await createPlatformInvite(inviter.id, parsed.data.email);
+    sent = await inviteAndEmail(inviter, parsed.data.email);
   } catch (error) {
     if (error instanceof AlreadyOnTeamError) return { values, fieldErrors: { email: ["This person is already on the team."] } };
     throw error;
   }
-
-  // The invite exists either way; if the email fails the admin can resend, which replaces it.
-  let emailed = true;
-  try {
-    await sendPlatformInviteEmail(inviter, invite.email, adminUrl(`${ADMIN_INVITE_ROUTE}?token=${encodeURIComponent(invite.token)}`));
-  } catch (error) {
-    emailed = false;
-    console.error("[email] platform invite failed:", error instanceof Error ? error.message : "unknown error");
-  }
   revalidatePath(STAFF_PATH);
-  return { sentTo: invite.email, emailed };
+  return { sentTo: sent.email, emailed: sent.emailed };
 }
 
 export async function revokeInviteAction(data: FormData) {

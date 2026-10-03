@@ -1,7 +1,8 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { defineTool, runAgent } from "./core";
+import { defineTool } from "./core";
+import { runAnthropicLoop } from "./providers/anthropic";
 
 type Reply = Partial<Anthropic.Message> & { content: Anthropic.ContentBlock[]; stop_reason: Anthropic.Message["stop_reason"] };
 
@@ -17,13 +18,15 @@ function fakeClient(replies: Reply[]) {
         return { finalMessage: async () => ({ usage: { input_tokens: 10, output_tokens: 5 }, ...reply }) };
       },
     },
-  } as unknown as Parameters<typeof runAgent>[0]["client"];
+  } as unknown as Parameters<typeof runAnthropicLoop>[0];
   return { client, sent };
 }
 
 const text = (value: string): Anthropic.TextBlock => ({ type: "text", text: value, citations: null });
 const toolUse = (id: string, name: string, input: unknown): Anthropic.ToolUseBlock => ({ type: "tool_use", id, name, input, caller: { type: "direct" } }) as Anthropic.ToolUseBlock;
-const base = { model: "m", system: "s", history: [{ role: "user" as const, content: "hi" }] };
+const base = { system: "s", history: [{ role: "user" as const, content: "hi" }] };
+const runAgent = (opts: { client: Parameters<typeof runAnthropicLoop>[0]; system: string; tools: Parameters<typeof runAnthropicLoop>[2]["tools"]; history: Parameters<typeof runAnthropicLoop>[2]["history"]; maxSteps?: number }) =>
+  runAnthropicLoop(opts.client, "m", opts);
 
 describe("runAgent", () => {
   it("runs a tool with validated input and wraps its output as data", async () => {

@@ -1,6 +1,9 @@
 import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { db } from "@/src/server/db/client";
 import { platformAdmins, platformInvites, user, type PlatformRole } from "@/src/server/db/schema";
+import { adminUrl } from "@/src/lib/clinic-host";
+import { ADMIN_INVITE_ROUTE } from "@/src/lib/constants";
+import { sendPlatformInviteEmail } from "./email";
 import { newSecretToken, sha256Hex } from "./tokens";
 
 const INVITE_TTL_DAYS = 7;
@@ -154,4 +157,16 @@ export async function setPlatformStaffActive(actorUserId: string, targetUserId: 
     .where(and(eq(platformAdmins.userId, targetUserId), eq(platformAdmins.role, "staff")))
     .returning({ id: platformAdmins.id });
   if (rows.length === 0) throw new ForbiddenChangeError("not a staff member");
+}
+
+/** Records the invitation and emails the link. The invite exists even if the email fails, so the caller can offer a resend. */
+export async function inviteAndEmail(inviter: { id: string; name: string }, email: string) {
+  const invite = await createPlatformInvite(inviter.id, email);
+  try {
+    await sendPlatformInviteEmail(inviter, invite.email, adminUrl(`${ADMIN_INVITE_ROUTE}?token=${encodeURIComponent(invite.token)}`));
+    return { email: invite.email, emailed: true };
+  } catch (error) {
+    console.error("[email] platform invite failed:", error instanceof Error ? error.message : "unknown error");
+    return { email: invite.email, emailed: false };
+  }
 }

@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { eq, sql } from "drizzle-orm";
-import { withAccountAndClinic } from "@/src/server/db/client";
+import { count, eq, sql } from "drizzle-orm";
+import { withAccountAndClinic, withPlatformAdmin } from "@/src/server/db/client";
 import {
   accounts,
   auditLogs,
@@ -83,4 +83,28 @@ export async function createTenant(adminUserId: string, input: NewTenantInput) {
     if (constraint && SUBDOMAIN_CONSTRAINTS.has(constraint)) throw new SubdomainTakenError(input.subdomain);
     throw error;
   }
+}
+
+export class TierTooSmallError extends Error {}
+
+/** Locks or unlocks a tenant's access (never deletes anything). Company admin only. */
+export async function setTenantSubscriptionStatus(accountId: string, status: "masterlocked" | "active") {
+  const rows = await withPlatformAdmin((tx) =>
+    tx.update(subscriptions).set({ status }).where(eq(subscriptions.accountId, accountId)).returning({ id: subscriptions.id }),
+  );
+  if (rows.length === 0) throw new Error("No subscription for that account.");
+}
+
+/** Moves a tenant to another tier, refusing a tier with fewer clinic slots than clinics they already run. */
+export async function changeTenantTier(accountId: string, tier: keyof typeof SLOTS) {
+  await withPlatformAdmin(async (tx) => {
+    const [{ clinicCount }] = await tx.select({ clinicCount: count() }).from(clinics).where(eq(clinics.accountId, accountId));
+    if (clinicCount > SLOTS[tier]) throw new TierTooSmallError();
+    const rows = await tx
+      .update(subscriptions)
+      .set({ tier, clinicSlotLimit: SLOTS[tier] })
+      .where(eq(subscriptions.accountId, accountId))
+      .returning({ id: subscriptions.id });
+    if (rows.length === 0) throw new Error("No subscription for that account.");
+  });
 }
