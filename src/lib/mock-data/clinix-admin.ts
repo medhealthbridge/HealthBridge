@@ -223,25 +223,6 @@ export const CURRENT_PLAN = {
   seats: "5 of unlimited",
 };
 
-export type ImportKind = "patients" | "visits" | "services" | "staff" | "inventory";
-
-export const IMPORT_KINDS: Record<ImportKind, { label: string; title: string; desc: string }> = {
-  patients: { label: "Patient roster", title: "Import patient roster", desc: "Name, DOB, contact, MRN mapping · CSV or Excel" },
-  visits: { label: "Historical visit records", title: "Import visit history", desc: "From a legacy system export · CSV" },
-  services: { label: "Service & price list", title: "Import service & price list", desc: "Bulk-load services beyond one-by-one entry · CSV" },
-  staff: { label: "Staff roster", title: "Import staff roster", desc: "Bulk-invite staff by role · CSV" },
-  inventory: { label: "Inventory", title: "Import inventory", desc: "SKU, item name, on-hand qty, min threshold, expiry · CSV" },
-};
-
-export const IMPORT_CARDS: ImportKind[] = ["patients", "visits", "services", "staff"];
-
-export const EXPORT_CARDS: { label: string; desc: string; toast: string }[] = [
-  { label: "Patient records", desc: "Full patient list, this branch · CSV", toast: "Patient export queued — check your email" },
-  { label: "Financial reports", desc: "Sales, claims aging, collections · CSV", toast: "Reports export queued — check your email" },
-  { label: "Audit log", desc: "Every privileged action, for compliance · CSV", toast: "Audit log export queued — check your email" },
-  { label: "Full data export", desc: "Everything — for cancellation or backup · ZIP", toast: "Full data export requested — you’ll get a download link by email" },
-];
-
 export type CustomField = { id: string; label: string; type: "Text" | "Select"; appliesTo: "Patients" | "Inventory" };
 
 export const CUSTOM_FIELDS: CustomField[] = [

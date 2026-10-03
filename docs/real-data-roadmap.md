@@ -64,7 +64,7 @@ Rules that apply everywhere: every write and every patient-record view writes `a
 7. ~~Inventory~~ — **done.** items, batches, stock in/out, low-stock and expiry alerts.
 8. ~~Activity log and Overview~~ — **done.** real audit trail page; dashboard KPIs from real tables.
 9. ~~Patient portal (read-only)~~ — **done.** invite by email/OTP, own visits, receipts and upcoming appointments. No writes; consent and data requests are handled by staff.
-10. **Claims, reminders, import/export** — HMO/PhilHealth claims, email/SMS reminders, CSV import with preview.
+10. **Claims, import/export** — **done** (reminders still open: need a scheduler and an SMS provider). — HMO/PhilHealth claims, email/SMS reminders, CSV import with preview.
 
 The AI assistant gains tools for each area as it lands, always confirm-first with step-up on edit/delete.
 
