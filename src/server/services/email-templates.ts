@@ -60,3 +60,20 @@ export function composePlatformInviteEmail(inviter: { name: string }, email: str
     }),
   };
 }
+
+export function composeStaffInviteEmail(clinicName: string, inviterName: string, role: "assistant" | "practitioner", url: string): ComposedEmail {
+  const roleLabel = role === "assistant" ? "front-desk assistant" : "practitioner";
+  return {
+    subject: `You're invited to ${clinicName} on Clinix PH`,
+    ...renderActionEmail({
+      preheader: `${inviterName} invited you to join ${clinicName} as ${roleLabel}.`,
+      heading: `Join ${clinicName}`,
+      paragraphs: [
+        "Hi there,",
+        `${inviterName} invited you to join ${clinicName} on Clinix PH as a ${roleLabel}. Use the button below to set up your access.`,
+      ],
+      action: { label: "Accept invitation", url },
+      footnote: "This link expires in 7 days and works once. If you weren't expecting it, ignore this email — nothing happens until you accept.",
+    }),
+  };
+}

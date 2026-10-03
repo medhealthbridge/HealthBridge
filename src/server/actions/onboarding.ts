@@ -8,6 +8,7 @@ import {
   SubdomainTakenError,
   WorkspaceExistsError,
 } from "@/src/server/services/onboarding";
+import { emailStaffInvite } from "@/src/server/services/clinic-staff";
 import { consumeRateLimit } from "@/src/server/services/rate-limit";
 import { clinicConsoleUrl, clinicSubdomainsEnabled } from "@/src/lib/clinic-host";
 import { CLINIX_ROUTES } from "@/src/lib/constants";
@@ -43,6 +44,9 @@ export async function completeOnboardingAction(values: unknown): Promise<Onboard
     }
     throw error;
   }
+
+  // The invite was saved with the workspace; emailing it can fail without undoing anything (the owner can resend from Staff).
+  if (workspace.invite) await emailStaffInvite({ name: workspace.branchName, subdomain: workspace.subdomain }, owner.name, workspace.invite);
 
   // The console is what shows the new workspace. Revalidating only it keeps
   // this page (and the wizard's go-live step) from re-rendering mid-flow.

@@ -71,3 +71,8 @@ export function isAdminHost(host: string | null | undefined) {
 export function adminUrl(path: string) {
   return clinicSubdomainsEnabled() ? `https://${ADMIN_HOST}${path}` : `${process.env.BETTER_AUTH_URL ?? ""}${path}`;
 }
+
+/** Where a clinic's emailed links point: its own host once subdomains are live, else this server. */
+export function clinicLinkOrigin(subdomain: string) {
+  return clinicSubdomainsEnabled() ? `https://${subdomain}${CLINIC_DOMAIN_SUFFIX}` : (process.env.BETTER_AUTH_URL ?? "");
+}

@@ -85,6 +85,13 @@
       "when": 1790998012492,
       "tag": "0011_services_price_list",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791002642361,
+      "tag": "0012_staff_invite_redeem",
+      "breakpoints": true
     }
   ]
 }

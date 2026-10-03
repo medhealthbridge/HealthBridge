@@ -7,6 +7,7 @@ export const CLINIX_ROUTES = {
   resetRequest: "/clinix-ph/auth/reset",
   resetConfirm: "/clinix-ph/auth/reset/confirm",
   openDomain: "/clinix-ph/open-domain",
+  join: "/clinix-ph/join",
 } as const;
 
 // Production serves Clinix on its own subdomain (set NEXT_PUBLIC_CLINIX_URL);

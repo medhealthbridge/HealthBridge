@@ -95,18 +95,22 @@ export async function createClinicWorkspace(ownerUserId: string, input: Onboardi
         .values({ clinicId, userId: ownerUserId, role: "owner", joinedAt: new Date() })
         .returning({ id: clinicStaff.id });
 
+      // The raw token leaves this function so the caller can email it; only its hash is stored.
+      let invite: { token: string; email: string; role: "assistant" | "practitioner" } | undefined;
       if (input.staffEmail) {
+        const { token, tokenHash } = newSecretToken();
         await tx.insert(staffInvites).values({
           clinicId,
           email: input.staffEmail,
           role: input.staffRole,
           invitedByStaffId: owner.id,
-          tokenHash: newSecretToken().tokenHash,
+          tokenHash,
           expiresAt: daysFromNow(STAFF_INVITE_TTL_DAYS),
         });
+        invite = { token, email: input.staffEmail, role: input.staffRole };
       }
 
-      return { clinicId, subdomain: input.subdomain };
+      return { clinicId, subdomain: input.subdomain, branchName: input.branchName, invite };
     });
   } catch (error) {
     const constraint = uniqueViolationConstraint(error);

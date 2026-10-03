@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
+import { acceptWithAccount } from "@/src/server/invitee-auth";
 import { auth, requireSuperAdmin } from "@/src/server/auth";
 import { db } from "@/src/server/db/client";
 import { user } from "@/src/server/db/schema";
@@ -107,19 +108,14 @@ export async function acceptInviteAction(_prev: AcceptInviteState, data: FormDat
 
   if (!(await claimInvite(invite.id))) return { message: INVALID_LINK };
   try {
-    let userId = existing?.id;
-    if (existing) {
-      // An existing account proves itself with its own password; the invite doesn't replace it.
-      await auth.api.signInEmail({ body: { email: invite.email, password: parsed.data.password }, headers: requestHeaders });
-    } else {
-      const created = await auth.api.signUpEmail({
-        body: { name: parsed.data.name, email: invite.email, password: parsed.data.password },
-        headers: requestHeaders,
-      });
-      userId = created.user.id;
-    }
-    await grantPlatformStaff(userId!);
-    if (!existing) await auth.api.signInEmail({ body: { email: invite.email, password: parsed.data.password }, headers: requestHeaders });
+    await acceptWithAccount({
+      email: invite.email,
+      name: parsed.data.name,
+      password: parsed.data.password,
+      existingUserId: existing?.id,
+      headers: requestHeaders,
+      grant: grantPlatformStaff,
+    });
   } catch (error) {
     await releaseInvite(invite.id);
     if (!(error instanceof APIError)) throw error;

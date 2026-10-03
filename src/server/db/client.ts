@@ -110,3 +110,15 @@ export async function withPlatformAdmin<T>(fn: (tx: Tx) => Promise<T>): Promise<
     return fn(tx);
   });
 }
+
+/**
+ * For redeeming an emailed staff invite: the visitor has only the token, before
+ * any clinic is known. `staff_invites`' policy lets exactly the row with that
+ * token's hash through. Pass the hash, never the raw token or an unverified id.
+ */
+export async function withInviteToken<T>(tokenHash: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select set_config('app.current_invite_hash', ${tokenHash}, true)`);
+    return fn(tx);
+  });
+}
