@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 import { auth, requireSuperAdmin } from "@/src/server/auth";
 import { db } from "@/src/server/db/client";
 import { user } from "@/src/server/db/schema";
+import { platformRoleOf } from "@/src/server/services/access";
 import { sendPlatformInviteEmail } from "@/src/server/services/email";
 import {
   AlreadyOnTeamError,
@@ -24,6 +25,7 @@ import {
 import { consumeRateLimit } from "@/src/server/services/rate-limit";
 import { adminUrl } from "@/src/lib/clinic-host";
 import { ADMIN_INVITE_ROUTE, COMPANY_ADMIN_ROUTE } from "@/src/lib/constants";
+import { loginSchema } from "@/src/lib/schemas/auth";
 import {
   acceptInviteSchema,
   inviteAdminSchema,
@@ -133,6 +135,32 @@ export async function acceptInviteAction(_prev: AcceptInviteState, data: FormDat
     await releaseInvite(invite.id);
     if (!(error instanceof APIError)) throw error;
     return { message: existing ? "That password doesn't match your existing account." : "We couldn't create your account. Try again." };
+  }
+
+  redirect(COMPANY_ADMIN_ROUTE);
+}
+
+export type AdminLoginState = FormState<"email" | "password">;
+
+const BAD_LOGIN = "Incorrect email or password.";
+
+/** The company admin's sign-in. Anyone who isn't on the team gets the same answer as a wrong password. */
+export async function adminLoginAction(_prev: AdminLoginState, data: FormData): Promise<AdminLoginState> {
+  const values = { email: String(data.get("email") ?? "") };
+  const parsed = loginSchema.safeParse(Object.fromEntries(data));
+  if (!parsed.success) return { values, fieldErrors: z.flattenError(parsed.error).fieldErrors };
+
+  const requestHeaders = await headers();
+  try {
+    const { user: signedIn } = await auth.api.signInEmail({ body: parsed.data, headers: requestHeaders });
+    if (!(await platformRoleOf(signedIn.id))) {
+      // A valid Clinix account, but not DataBridgeSol staff: end the session just created.
+      await auth.api.signOut({ headers: requestHeaders });
+      return { values, message: BAD_LOGIN };
+    }
+  } catch (error) {
+    if (!(error instanceof APIError)) throw error;
+    return { values, message: error.statusCode === 429 ? "Too many attempts. Wait a few minutes and try again." : BAD_LOGIN };
   }
 
   redirect(COMPANY_ADMIN_ROUTE);

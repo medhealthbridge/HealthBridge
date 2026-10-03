@@ -15,8 +15,8 @@ import { getOwnerWorkspace } from "./services/workspace";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./services/email";
 import { consumeRateLimit, type RateLimitRule } from "./services/rate-limit";
 import { clinicIdForCustomDomain } from "./services/custom-domains";
-import { clinicSubdomainsEnabled, isCustomHost, productAuthUrl, tenantSlugFromHost } from "@/src/lib/clinic-host";
-import { CLINIC_DOMAIN_SUFFIX, CLINIX_ROUTES, SOCIAL_PROVIDERS } from "@/src/lib/constants";
+import { clinicSubdomainsEnabled, isAdminHost, isCustomHost, productAuthUrl, tenantSlugFromHost } from "@/src/lib/clinic-host";
+import { ADMIN_LOGIN_ROUTE, CLINIC_DOMAIN_SUFFIX, CLINIX_ROUTES, SOCIAL_PROVIDERS } from "@/src/lib/constants";
 
 // A provider is offered only when both of its env vars are set, so the auth
 // page never renders a button that can't complete (see .env.example).
@@ -155,8 +155,9 @@ async function ownedClinicIds(userId: string) {
 export async function requireUser() {
   const current = await getSession();
   if (!current?.user.emailVerified) {
-    // A custom domain has no login of its own: sign in on the product host, which hands the session back.
-    redirect(isCustomHost((await headers()).get("host")) ? productAuthUrl() : CLINIX_ROUTES.auth);
+    const host = (await headers()).get("host");
+    // The admin host has its own sign-in; a custom domain signs in on the product host, which hands the session back.
+    redirect(isAdminHost(host) ? ADMIN_LOGIN_ROUTE : isCustomHost(host) ? productAuthUrl() : CLINIX_ROUTES.auth);
   }
   return current.user;
 }

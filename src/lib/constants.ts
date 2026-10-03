@@ -16,6 +16,8 @@ export const CLINIX_URL = process.env.NEXT_PUBLIC_CLINIX_URL || CLINIX_ROUTES.la
 export const COMPANY_ADMIN_ROUTE = "/admin";
 // Where an emailed team invitation lands; outside /admin because the invitee has no access yet.
 export const ADMIN_INVITE_ROUTE = "/invite";
+// The company admin's own sign-in: no sign-up, no social buttons, separate from Clinix's.
+export const ADMIN_LOGIN_ROUTE = "/admin-login";
 
 export const CONSOLE_THEME_COOKIE = "console-theme";
 export const CONSOLE_THEMES = ["dark", "light"] as const;
