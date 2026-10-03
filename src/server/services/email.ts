@@ -1,4 +1,4 @@
-import { composePasswordResetEmail, composePlatformInviteEmail, composeStaffInviteEmail, composeVerificationEmail } from "./email-templates";
+import { composePasswordResetEmail, composePatientInviteEmail, composePlatformInviteEmail, composeStaffInviteEmail, composeVerificationEmail } from "./email-templates";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -42,4 +42,8 @@ export async function sendPlatformInviteEmail(inviter: { name: string }, email: 
 
 export async function sendStaffInviteEmail(invite: { clinicName: string; inviterName: string; role: "assistant" | "practitioner"; email: string }, url: string) {
   await sendEmail({ to: invite.email, ...composeStaffInviteEmail(invite.clinicName, invite.inviterName, invite.role, url) });
+}
+
+export async function sendPatientInviteEmail(invite: { clinicName: string; email: string }, url: string) {
+  await sendEmail({ to: invite.email, ...composePatientInviteEmail(invite.clinicName, url) });
 }

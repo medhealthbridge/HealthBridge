@@ -166,3 +166,30 @@ export const recalls = pgTable(
     }),
   }),
 );
+
+/**
+ * An emailed invitation for a patient to see their own visits and receipts
+ * (read-only portal). Only the SHA-256 of the token is stored, like staff invites.
+ */
+export const patientInvites = pgTable(
+  "patient_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
+    patientId: uuid("patient_id").notNull(),
+    email: text("email").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    status: text("status").notNull().default("pending"), // 'pending' | 'accepted' | 'revoked'
+    invitedByStaffId: uuid("invited_by_staff_id"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    clinicPatientIdx: index("patient_invites_clinic_patient_idx").on(table.clinicId, table.patientId),
+    patientInvitesPatientFk: foreignKey({
+      name: "patient_invites_patient_fk",
+      columns: [table.clinicId, table.patientId],
+      foreignColumns: [patients.clinicId, patients.id],
+    }),
+  }),
+);

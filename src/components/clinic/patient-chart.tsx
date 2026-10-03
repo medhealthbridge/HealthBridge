@@ -7,6 +7,7 @@ import { PageHeader } from "@/src/components/console/page-header";
 import { setPatientArchivedAction } from "@/src/server/actions/clinic-app";
 import type { PatientChart } from "@/src/server/services/clinic-app";
 import type { ClinicalNote } from "@/src/server/services/clinical-notes";
+import { InvitePortalDialog } from "./invite-portal-dialog";
 import { NotesPanel } from "./notes-panel";
 import type { Tone } from "@/src/types/console";
 import { ageOf } from "./patients-panel";
@@ -31,7 +32,7 @@ const Row = ({ label, value }: { label: string; value: string | null }) => (
 );
 
 /** One patient: details, visit history, and (for staff who may write) edit and archive. */
-export function PatientChartView({ chart, backHref, canWrite, notes, canWriteNotes }: { chart: PatientChart; backHref: string; canWrite: boolean; /** Null for roles that don't see clinical notes (the front desk). */ notes: ClinicalNote[] | null; canWriteNotes: boolean }) {
+export function PatientChartView({ chart, backHref, canWrite, notes, canWriteNotes, canInvite = false }: { chart: PatientChart; backHref: string; canWrite: boolean; /** Null for roles that don't see clinical notes (the front desk). */ notes: ClinicalNote[] | null; canWriteNotes: boolean; /** Owner and front desk may invite a patient to the read-only portal. */ canInvite?: boolean }) {
   const { patient, visits } = chart;
   const age = ageOf(patient.dateOfBirth);
   const editable = { id: patient.id, name: patient.name, firstName: patient.firstName, lastName: patient.lastName, sex: patient.sex, dateOfBirth: patient.dateOfBirth, phone: patient.phone, philhealth: patient.philhealth, oscaId: patient.oscaId, pwdId: patient.pwdId };
@@ -48,6 +49,7 @@ export function PatientChartView({ chart, backHref, canWrite, notes, canWriteNot
           canWrite ? (
             <>
               {!patient.archived && <PatientDialog patient={editable} />}
+              {!patient.archived && canInvite && <InvitePortalDialog patientId={patient.id} patientName={patient.name} />}
               <ArchiveButton id={patient.id} name={patient.name} noun="patient" action={setPatientArchivedAction} archived={patient.archived} consequence="They stop appearing in the list and for new bookings. Their record, visits and history are kept." />
             </>
           ) : undefined

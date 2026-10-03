@@ -18,5 +18,5 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
   const seesNotes = clinic.role !== "assistant";
   const notes = seesNotes ? await listClinicalNotes(clinic, chart.patient.id) : null;
 
-  return <PatientChartView chart={chart} backHref={`${roleHome(role)}/patients`} canWrite={canWrite} notes={notes} canWriteNotes={seesNotes} />;
+  return <PatientChartView chart={chart} backHref={`${roleHome(role)}/patients`} canWrite={canWrite} notes={notes} canWriteNotes={seesNotes} canInvite={clinic.role !== "practitioner"} />;
 }

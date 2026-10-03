@@ -77,3 +77,19 @@ export function composeStaffInviteEmail(clinicName: string, inviterName: string,
     }),
   };
 }
+
+export function composePatientInviteEmail(clinicName: string, url: string): ComposedEmail {
+  return {
+    subject: `${clinicName} invited you to see your visits online`,
+    ...renderActionEmail({
+      preheader: `See your appointments and receipts from ${clinicName}.`,
+      heading: `Your records at ${clinicName}`,
+      paragraphs: [
+        "Hi there,",
+        `${clinicName} invited you to a secure page where you can see your upcoming appointments, past visits and receipts. You can only view them there; to change anything, contact the clinic.`,
+      ],
+      action: { label: "Set up my access", url },
+      footnote: "This link expires in 7 days and works once. If you weren't expecting it, ignore this email — nothing happens until you use it.",
+    }),
+  };
+}

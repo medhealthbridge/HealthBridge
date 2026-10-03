@@ -9,7 +9,7 @@ import { after } from "next/server";
 import { cache } from "react";
 import { db } from "./db/client";
 import { account, session, user, verification } from "./db/schema";
-import { listActiveMemberships, platformRoleOf } from "./services/access";
+import { hasPortalAccess, listActiveMemberships, platformRoleOf } from "./services/access";
 import { describeStaffClinics } from "./services/clinic-app";
 import { getOwnerWorkspace } from "./services/workspace";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./services/email";
@@ -206,7 +206,10 @@ export const requireWorkspace = cache(async () => {
 export const requireStaff = cache(async () => {
   const current = await requireUser();
   const memberships = await getMemberships(current.id);
-  if (memberships.length === 0) redirect(CLINIX_ROUTES.onboarding);
+  if (memberships.length === 0) {
+    // A patient with portal access is not a clinic owner-to-be: send them to their records.
+    redirect((await hasPortalAccess(current.id)) ? CLINIX_ROUTES.portal : CLINIX_ROUTES.onboarding);
+  }
   return { user: current, clinics: await describeStaffClinics(memberships) };
 });
 
