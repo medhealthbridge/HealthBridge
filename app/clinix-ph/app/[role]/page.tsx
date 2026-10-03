@@ -4,8 +4,8 @@ import { PageHeader } from "@/src/components/console/page-header";
 import { StatGrid } from "@/src/components/console/stat-grid";
 import { roleHome, type AppRole } from "@/src/lib/clinic-app-nav";
 import { listPatients, listPractitioners, listTodayAppointments } from "@/src/server/services/clinic-app";
-import { AddWalkInDialog } from "./_components/add-walk-in-dialog";
-import { QueueList } from "./_components/queue-table";
+import { AddWalkInDialog } from "@/src/components/clinic/add-walk-in-dialog";
+import { QueueList } from "@/src/components/clinic/queue-list";
 
 export const metadata: Metadata = { title: "Today" };
 

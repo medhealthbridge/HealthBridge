@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, max, or, sql } from "drizzle-orm";
 import { withTenant } from "@/src/server/db/client";
-import { appointments, auditLogs, clinicStaff, clinics, patients, user } from "@/src/server/db/schema";
+import { appointments, auditLogs, clinicStaff, clinics, patients, services, user } from "@/src/server/db/schema";
 
 export type StaffRole = "owner" | "practitioner" | "assistant";
 
@@ -36,6 +36,9 @@ export type TodayAppointment = {
   practitionerStaffId: string | null;
   practitionerName: string | null;
   chairOrRoom: string | null;
+  endsAt: Date;
+  serviceId: string | null;
+  serviceName: string | null;
 };
 
 export type PatientRow = {
@@ -72,6 +75,8 @@ export const NEXT_STATUS: Record<AppointmentStatus, AppointmentStatus[]> = {
 
 export class TransitionError extends Error {}
 export class NotFoundError extends Error {}
+/** The practitioner already has an appointment in that time. */
+export class ConflictError extends Error {}
 
 const WALK_IN_MINUTES = 30;
 
@@ -139,6 +144,9 @@ export async function listTodayAppointments(
         queueNumber: appointments.queueNumber,
         practitionerStaffId: appointments.practitionerStaffId,
         chairOrRoom: appointments.chairOrRoom,
+        endsAt: appointments.endsAt,
+        serviceId: appointments.serviceId,
+        serviceName: services.name,
         firstName: patients.firstName,
         lastName: patients.lastName,
         displayName: patients.displayName,
@@ -152,6 +160,7 @@ export async function listTodayAppointments(
         and(eq(clinicStaff.clinicId, appointments.clinicId), eq(clinicStaff.id, appointments.practitionerStaffId)),
       )
       .leftJoin(user, eq(user.id, clinicStaff.userId))
+      .leftJoin(services, and(eq(services.clinicId, appointments.clinicId), eq(services.id, appointments.serviceId)))
       .where(
         and(
           eq(appointments.clinicId, clinic.id),
@@ -174,6 +183,9 @@ export async function listTodayAppointments(
       practitionerStaffId: row.practitionerStaffId,
       practitionerName: row.practitionerName,
       chairOrRoom: row.chairOrRoom,
+      endsAt: row.endsAt,
+      serviceId: row.serviceId,
+      serviceName: row.serviceName,
     }));
   });
 }
@@ -530,11 +542,41 @@ export async function setPatientArchived(clinicId: string, actorUserId: string, 
   });
 }
 
-/** A booked (not walk-in) appointment at a clinic-local time. */
+const OCCUPYING = ["requested", "confirmed", "checked_in", "in_progress", "completed"];
+
+/** Whether the practitioner is free for [start, end), ignoring one appointment (the one being moved). */
+async function assertPractitionerFree(
+  tx: Parameters<Parameters<typeof withTenant>[1]>[0],
+  clinicId: string,
+  practitionerStaffId: string | null,
+  start: Date,
+  end: Date,
+  ignoreId?: string,
+) {
+  if (!practitionerStaffId) return;
+  const [clash] = await tx
+    .select({ id: appointments.id })
+    .from(appointments)
+    .where(
+      and(
+        eq(appointments.clinicId, clinicId),
+        eq(appointments.practitionerStaffId, practitionerStaffId),
+        isNull(appointments.deletedAt),
+        inArray(appointments.status, OCCUPYING),
+        lt(appointments.startsAt, end),
+        sql`${appointments.endsAt} > ${start}`,
+        ignoreId ? sql`${appointments.id} <> ${ignoreId}` : undefined,
+      ),
+    )
+    .limit(1);
+  if (clash) throw new ConflictError();
+}
+
+/** A booked (not walk-in) appointment at a clinic-local time, for a service and practitioner. Refuses a double-booked practitioner. */
 export async function bookAppointment(
   clinic: Pick<StaffClinic, "id" | "timezone">,
   actorUserId: string,
-  input: { patientId: string; startsAt: Date; practitionerStaffId: string | null },
+  input: { patientId: string; startsAt: Date; practitionerStaffId: string | null; serviceId?: string | null },
 ) {
   if (input.startsAt.getTime() < Date.now() - 5 * 60_000) throw new Error("That time has passed.");
   return withTenant(clinic.id, async (tx) => {
@@ -544,18 +586,61 @@ export async function bookAppointment(
       .where(and(eq(patients.clinicId, clinic.id), eq(patients.id, input.patientId), isNull(patients.deletedAt)))
       .limit(1);
     if (!patient) throw new NotFoundError("patient");
+
+    let minutes = WALK_IN_MINUTES;
+    if (input.serviceId) {
+      const [service] = await tx
+        .select({ durationMinutes: services.durationMinutes })
+        .from(services)
+        .where(and(eq(services.clinicId, clinic.id), eq(services.id, input.serviceId), isNull(services.deletedAt)))
+        .limit(1);
+      if (!service) throw new NotFoundError("service");
+      minutes = service.durationMinutes ?? WALK_IN_MINUTES;
+    }
+    const endsAt = new Date(input.startsAt.getTime() + minutes * 60_000);
+    await assertPractitionerFree(tx, clinic.id, input.practitionerStaffId, input.startsAt, endsAt);
+
     const [row] = await tx
       .insert(appointments)
       .values({
-        clinicId: clinic.id, patientId: input.patientId, practitionerStaffId: input.practitionerStaffId,
-        startsAt: input.startsAt, endsAt: new Date(input.startsAt.getTime() + WALK_IN_MINUTES * 60_000), status: "confirmed", source: "phone",
+        clinicId: clinic.id, patientId: input.patientId, practitionerStaffId: input.practitionerStaffId, serviceId: input.serviceId ?? null,
+        startsAt: input.startsAt, endsAt, status: "confirmed", source: "phone",
       })
       .returning({ id: appointments.id });
     await tx.insert(auditLogs).values({
       clinicId: clinic.id, actorUserId, entityType: "appointment", entityId: row.id, action: "create",
-      diff: { after: { status: "confirmed", source: "phone", startsAt: input.startsAt.toISOString() }, via: "assistant" },
+      diff: { after: { status: "confirmed", source: "phone", startsAt: input.startsAt.toISOString(), serviceId: input.serviceId ?? null } },
     });
     return row;
+  });
+}
+
+/** Moves a booking that hasn't started to a new time (and optionally practitioner), keeping its length. */
+export async function rescheduleAppointment(
+  clinic: Pick<StaffClinic, "id">,
+  actorUserId: string,
+  appointmentId: string,
+  input: { startsAt: Date; practitionerStaffId?: string | null },
+) {
+  if (input.startsAt.getTime() < Date.now() - 5 * 60_000) throw new Error("That time has passed.");
+  return withTenant(clinic.id, async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(appointments)
+      .where(and(eq(appointments.clinicId, clinic.id), eq(appointments.id, appointmentId), isNull(appointments.deletedAt)))
+      .for("update")
+      .limit(1);
+    if (!current) throw new NotFoundError("appointment");
+    if (current.status !== "requested" && current.status !== "confirmed") throw new TransitionError(`${current.status} can't be rescheduled`);
+
+    const practitionerStaffId = input.practitionerStaffId === undefined ? current.practitionerStaffId : input.practitionerStaffId;
+    const endsAt = new Date(input.startsAt.getTime() + (current.endsAt.getTime() - current.startsAt.getTime()));
+    await assertPractitionerFree(tx, clinic.id, practitionerStaffId, input.startsAt, endsAt, appointmentId);
+    await tx.update(appointments).set({ startsAt: input.startsAt, endsAt, practitionerStaffId }).where(and(eq(appointments.clinicId, clinic.id), eq(appointments.id, appointmentId)));
+    await tx.insert(auditLogs).values({
+      clinicId: clinic.id, actorUserId, entityType: "appointment", entityId: appointmentId, action: "update",
+      diff: { before: { startsAt: current.startsAt.toISOString(), practitionerStaffId: current.practitionerStaffId }, after: { startsAt: input.startsAt.toISOString(), practitionerStaffId } },
+    });
   });
 }
 
@@ -596,4 +681,16 @@ export async function openPatientChart(clinicId: string, actorUserId: string, mr
     await tx.insert(auditLogs).values({ clinicId, actorUserId, entityType: "patient", entityId: patient.id, action: "view" });
     return { patient, visits: visits.map((visit) => ({ ...visit, status: visit.status as AppointmentStatus })) };
   });
+}
+
+/** The clinic-local calendar day of an instant, as YYYY-MM-DD. */
+export function clinicDateString(timezone: string, at = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
+}
+
+/** Calendar arithmetic on a YYYY-MM-DD string (no time zones involved). */
+export function addDays(date: string, days: number) {
+  const moved = new Date(`${date}T00:00:00Z`);
+  moved.setUTCDate(moved.getUTCDate() + days);
+  return moved.toISOString().slice(0, 10);
 }

@@ -2,6 +2,7 @@ import { pgTable, uuid, text, integer, timestamp, index, unique, foreignKey } fr
 import { clinics } from "./tenancy";
 import { clinicStaff } from "./staff";
 import { patients } from "./patients";
+import { services } from "./services";
 
 /**
  * Per-chair/room booking + walk-in queue. `status` and `source` are `text`
@@ -16,6 +17,7 @@ export const appointments = pgTable(
     clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
     patientId: uuid("patient_id").notNull(),
     practitionerStaffId: uuid("practitioner_staff_id"),
+    serviceId: uuid("service_id"),
     confirmedByStaffId: uuid("confirmed_by_staff_id"),
     chairOrRoom: text("chair_or_room"),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
@@ -41,6 +43,11 @@ export const appointments = pgTable(
       name: "appointments_practitioner_fk",
       columns: [table.clinicId, table.practitionerStaffId],
       foreignColumns: [clinicStaff.clinicId, clinicStaff.id],
+    }),
+    appointmentsServiceFk: foreignKey({
+      name: "appointments_service_fk",
+      columns: [table.clinicId, table.serviceId],
+      foreignColumns: [services.clinicId, services.id],
     }),
     appointmentsConfirmedByFk: foreignKey({
       name: "appointments_confirmed_by_fk",

@@ -8,6 +8,7 @@ import {
   FileCheck2,
   Headset,
   LayoutDashboard,
+  ListOrdered,
   MessageSquareText,
   Package,
   PhilippinePeso,
@@ -24,6 +25,7 @@ import type { ConsoleIconName } from "@/src/types/console";
 const ICONS: Record<ConsoleIconName, LucideIcon> = {
   overview: LayoutDashboard,
   assistant: Bot,
+  queue: ListOrdered,
   tenants: Building2,
   billing: PhilippinePeso,
   modules: Blocks,

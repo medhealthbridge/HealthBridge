@@ -35,7 +35,7 @@ export function QueueList({
             </span>
             <div className="min-w-0 flex-1 basis-48">
               <Link
-                href={`${patientsHref}?q=${encodeURIComponent(appointment.mrn)}`}
+                href={`${patientsHref}/${encodeURIComponent(appointment.mrn)}`}
                 className="block truncate text-[13px] font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-console-accent"
               >
                 {appointment.patientName}

@@ -7,6 +7,8 @@ import { serviceInputSchema } from "@/src/lib/schemas/service";
 import {
   bookAppointment,
   changeAppointmentStatus,
+  ConflictError,
+  rescheduleAppointment,
   createPatient,
   dayBounds,
   NotFoundError,
@@ -64,10 +66,18 @@ const ACTIONS = {
   },
   book_appointment: {
     risk: "create" as Risk,
-    schema: z.object({ patientId: z.uuid(), startsAt: z.iso.datetime(), practitionerStaffId: z.uuid().nullable() }),
-    run: async (who: ClinicActor, args: { patientId: string; startsAt: string; practitionerStaffId: string | null }) => {
-      await bookAppointment(who.clinic, who.id, { patientId: args.patientId, startsAt: new Date(args.startsAt), practitionerStaffId: args.practitionerStaffId });
+    schema: z.object({ patientId: z.uuid(), startsAt: z.iso.datetime(), practitionerStaffId: z.uuid().nullable(), serviceId: z.uuid().nullable().default(null) }),
+    run: async (who: ClinicActor, args: { patientId: string; startsAt: string; practitionerStaffId: string | null; serviceId: string | null }) => {
+      await bookAppointment(who.clinic, who.id, { patientId: args.patientId, startsAt: new Date(args.startsAt), practitionerStaffId: args.practitionerStaffId, serviceId: args.serviceId });
       return "Appointment booked.";
+    },
+  },
+  reschedule_appointment: {
+    risk: "edit" as Risk,
+    schema: z.object({ appointmentId: z.uuid(), startsAt: z.iso.datetime() }),
+    run: async (who: ClinicActor, args: { appointmentId: string; startsAt: string }) => {
+      await rescheduleAppointment(who.clinic, who.id, args.appointmentId, { startsAt: new Date(args.startsAt) });
+      return "Appointment moved.";
     },
   },
   create_service: {
@@ -198,9 +208,10 @@ export async function confirmClinicAction(who: ClinicActor, actionId: string, in
       error instanceof StaleChangeError || error instanceof StaleServiceError ? "That record changed after the request was prepared. Ask again to see the current values."
       : error instanceof NotFoundError || error instanceof ServiceNotFoundError ? "That record no longer exists."
       : error instanceof DuplicateServiceError ? "A service with that name already exists."
+      : error instanceof ConflictError ? "That practitioner already has an appointment at that time."
       : error instanceof TransitionError ? "That appointment has already moved on."
       : "That change failed. Nothing was changed.";
-    if (!(error instanceof StaleChangeError || error instanceof StaleServiceError || error instanceof NotFoundError || error instanceof ServiceNotFoundError || error instanceof DuplicateServiceError || error instanceof TransitionError)) {
+    if (!(error instanceof StaleChangeError || error instanceof StaleServiceError || error instanceof NotFoundError || error instanceof ServiceNotFoundError || error instanceof DuplicateServiceError || error instanceof ConflictError || error instanceof TransitionError)) {
       console.error(`[agent] clinic action ${kind} failed:`, error instanceof Error ? error.message : "unknown error");
     }
     await db.update(agentActions).set({ status: "failed", result: message }).where(eq(agentActions.id, actionId));

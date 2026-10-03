@@ -233,8 +233,8 @@ function writeTools(ctx: ClinicToolContext): AgentTool[] {
     defineTool({
       name: "propose_book_appointment",
       description: "Prepare to book a patient for a time in the clinic's own timezone. Optionally name the practitioner.",
-      input: z.object({ mrn: mrnSchema, startsAtLocal: localDateTimeSchema, practitionerName: z.string().trim().max(80).optional() }),
-      run: async ({ mrn, startsAtLocal, practitionerName }) => {
+      input: z.object({ mrn: mrnSchema, startsAtLocal: localDateTimeSchema, practitionerName: z.string().trim().max(80).optional(), serviceName: z.string().trim().max(120).optional() }),
+      run: async ({ mrn, startsAtLocal, practitionerName, serviceName }) => {
         const patient = await findPatientByMrn(ctx.clinic.id, mrn);
         if (!patient) return notFound;
         const startsAt = clinicLocalToUtc(startsAtLocal, ctx.clinic.timezone);
@@ -245,7 +245,26 @@ function writeTools(ctx: ClinicToolContext): AgentTool[] {
           if (matches.length !== 1) return { proposed: false, note: matches.length === 0 ? "No practitioner by that name." : "More than one practitioner matches. Ask which." };
           practitioner = matches[0];
         }
-        return propose("book_appointment", { patientId: patient.id, startsAt: startsAt.toISOString(), practitionerStaffId: practitioner?.staffId ?? null }, `Book ${patient.name} on ${startsAtLocal.replace("T", " at ")}${practitioner ? ` with ${practitioner.name}` : ""}.`);
+        let service: ServiceRow | undefined;
+        if (serviceName) {
+          const picked = await findServiceByName(serviceName);
+          if ("problem" in picked) return { proposed: false, note: picked.problem };
+          service = picked.service;
+        }
+        return propose("book_appointment", { patientId: patient.id, startsAt: startsAt.toISOString(), practitionerStaffId: practitioner?.staffId ?? null, serviceId: service?.id ?? null }, `Book ${patient.name} on ${startsAtLocal.replace("T", " at ")}${service ? ` for ${service.name}` : ""}${practitioner ? ` with ${practitioner.name}` : ""}.`);
+      },
+    }),
+    defineTool({
+      name: "propose_reschedule_appointment",
+      description: "Prepare to move a booked appointment (id from list_appointments) to a new clinic-local time. Refused if the practitioner is busy then.",
+      input: z.object({ appointmentId: z.uuid(), startsAtLocal: localDateTimeSchema }),
+      run: async ({ appointmentId, startsAtLocal }) => {
+        const appointment = await findAppointment(ctx.clinic.id, appointmentId);
+        if (!appointment) return { proposed: false, note: "No such appointment at this clinic." };
+        if (appointment.status !== "requested" && appointment.status !== "confirmed") return { proposed: false, note: "Only booked appointments that haven't started can be moved." };
+        const startsAt = clinicLocalToUtc(startsAtLocal, ctx.clinic.timezone);
+        if (startsAt.getTime() < Date.now()) return { proposed: false, note: "That time has already passed." };
+        return propose("reschedule_appointment", { appointmentId, startsAt: startsAt.toISOString() }, `Move ${appointment.patientName}'s appointment to ${startsAtLocal.replace("T", " at ")}.`);
       },
     }),
     defineTool({

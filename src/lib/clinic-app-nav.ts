@@ -26,7 +26,8 @@ export function appNav(role: AppRole): NavGroup[] {
     return [
       {
         items: [
-          { href: home, label: "My schedule", icon: "appointments" },
+          { href: home, label: "My schedule", shortLabel: "Today", icon: "overview" },
+          { href: `${home}/appointments`, label: "My calendar", shortLabel: "Calendar", icon: "appointments" },
           { href: `${home}/patients`, label: "Patients", icon: "patients" },
         ],
       },
@@ -35,7 +36,8 @@ export function appNav(role: AppRole): NavGroup[] {
   const floor: NavGroup = {
     items: [
       { href: home, label: "Today", icon: "overview" },
-      { href: `${home}/queue`, label: "Queue", icon: "appointments" },
+      { href: `${home}/queue`, label: "Queue", icon: "queue" },
+      { href: `${home}/appointments`, label: "Appointments", shortLabel: "Calendar", icon: "appointments" },
       { href: `${home}/patients`, label: "Patients", icon: "patients" },
     ],
   };
