@@ -6,6 +6,8 @@ import { ArchiveButton } from "@/src/components/console/archive-button";
 import { PageHeader } from "@/src/components/console/page-header";
 import { setPatientArchivedAction } from "@/src/server/actions/clinic-app";
 import type { PatientChart } from "@/src/server/services/clinic-app";
+import type { ClinicalNote } from "@/src/server/services/clinical-notes";
+import { NotesPanel } from "./notes-panel";
 import type { Tone } from "@/src/types/console";
 import { ageOf } from "./patients-panel";
 import { PatientDialog } from "./patient-dialog";
@@ -29,7 +31,7 @@ const Row = ({ label, value }: { label: string; value: string | null }) => (
 );
 
 /** One patient: details, visit history, and (for staff who may write) edit and archive. */
-export function PatientChartView({ chart, backHref, canWrite }: { chart: PatientChart; backHref: string; canWrite: boolean }) {
+export function PatientChartView({ chart, backHref, canWrite, notes, canWriteNotes }: { chart: PatientChart; backHref: string; canWrite: boolean; /** Null for roles that don't see clinical notes (the front desk). */ notes: ClinicalNote[] | null; canWriteNotes: boolean }) {
   const { patient, visits } = chart;
   const age = ageOf(patient.dateOfBirth);
   const editable = { id: patient.id, name: patient.name, firstName: patient.firstName, lastName: patient.lastName, sex: patient.sex, dateOfBirth: patient.dateOfBirth, phone: patient.phone, philhealth: patient.philhealth, oscaId: patient.oscaId, pwdId: patient.pwdId };
@@ -83,6 +85,7 @@ export function PatientChartView({ chart, backHref, canWrite }: { chart: Patient
             </ul>
           )}
         </Panel>
+        {notes && <NotesPanel notes={notes} patientId={patient.id} canWrite={canWriteNotes} />}
       </div>
     </>
   );

@@ -4,6 +4,7 @@ import { requireActiveClinic } from "@/src/server/auth";
 import { PatientChartView } from "@/src/components/clinic/patient-chart";
 import { roleHome, type AppRole } from "@/src/lib/clinic-app-nav";
 import { openPatientChart } from "@/src/server/services/clinic-app";
+import { listClinicalNotes } from "@/src/server/services/clinical-notes";
 
 export const metadata: Metadata = { title: "Patient" };
 
@@ -13,6 +14,9 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
   const canWrite = clinic.role !== "practitioner";
   const chart = await openPatientChart(clinic.id, user.id, decodeURIComponent(mrn), canWrite && (await searchParams).view === "archived");
   if (!chart) notFound();
+  // Clinical notes are for the doctors (owner, practitioner); the front desk never sees them.
+  const seesNotes = clinic.role !== "assistant";
+  const notes = seesNotes ? await listClinicalNotes(clinic, chart.patient.id) : null;
 
-  return <PatientChartView chart={chart} backHref={`${roleHome(role)}/patients`} canWrite={canWrite} />;
+  return <PatientChartView chart={chart} backHref={`${roleHome(role)}/patients`} canWrite={canWrite} notes={notes} canWriteNotes={seesNotes} />;
 }
