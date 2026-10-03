@@ -10,6 +10,7 @@ const ENTITY_LABELS: Record<string, string> = {
   invoice: "receipt",
   service: "service",
   inventory_item: "inventory item",
+  claim: "claim",
   staff: "staff member",
   staff_invite: "staff invite",
   account: "account",
@@ -24,6 +25,7 @@ export const ACTIVITY_FILTERS = [
   { key: "invoice", label: "Billing" },
   { key: "service", label: "Services" },
   { key: "inventory_item", label: "Inventory" },
+  { key: "claim", label: "Claims" },
   { key: "staff", label: "Staff" },
 ] as const;
 
