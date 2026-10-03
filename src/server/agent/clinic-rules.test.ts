@@ -34,3 +34,21 @@ describe("patientChangesSchema", () => {
     expect(Object.keys(patientChangesSchema.parse({ phone: "0917 555 4412", clinicId: "x" }))).toEqual(["phone"]);
   });
 });
+
+describe("price questions", () => {
+  const list = [
+    { name: "Oral Prophylaxis", pricePesos: 1500, minutes: 45, vatExempt: false },
+    { name: "Dental Consultation", pricePesos: 800, minutes: 20, vatExempt: true },
+  ];
+  it("quotes from the real price list without a model", async () => {
+    const run = vi.fn(async () => list);
+    expect(await answerClinicByRules("How much is oral prophylaxis?", run, "Asia/Manila")).toContain("₱1,500.00");
+    expect(await answerClinicByRules("price list", run, "Asia/Manila")).toContain("Dental Consultation");
+    expect(run).toHaveBeenCalledWith("list_services", {});
+  });
+  it("leaves a price change to the model, which can only propose it", async () => {
+    const run = vi.fn();
+    expect(await answerClinicByRules("change the price of cleaning to 900", run, "Asia/Manila")).toBeNull();
+    expect(run).not.toHaveBeenCalled();
+  });
+});

@@ -1,4 +1,6 @@
-import { STATUTORY_DISCOUNT_RATE, VAT_RATE } from "@/src/lib/mock-data/clinix-app";
+/** Percent. VAT on a VATable sale (NIRC), and the senior/PWD statutory discount (RA 9994, RA 10754). */
+export const VAT_RATE = 12;
+export const STATUTORY_DISCOUNT_RATE = 20;
 
 export type PosTotals = {
   gross: number;

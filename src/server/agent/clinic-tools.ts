@@ -13,7 +13,10 @@ import {
   type PatientRecord,
   type StaffClinic,
 } from "@/src/server/services/clinic-app";
-import { createClinicPendingAction, riskOf, type ClinicActionKind } from "@/src/server/services/clinic-agent-actions";
+import { createClinicPendingAction, type ClinicActionKind } from "@/src/server/services/clinic-agent-actions";
+import { listServices, type ServiceRow } from "@/src/server/services/price-list";
+import { serviceInputSchema } from "@/src/lib/schemas/service";
+import { formatPesoExact } from "@/src/lib/utils";
 import { defineTool, type AgentTool, type Proposal } from "./core";
 
 export type ClinicToolContext = {
@@ -81,6 +84,12 @@ function readTools(ctx: ClinicToolContext): AgentTool[] {
       },
     }),
     defineTool({
+      name: "list_services",
+      description: "The clinic's price list: each service with category, duration, price in pesos and whether it is VAT-exempt. Use archived: true to see retired services.",
+      input: z.object({ archived: z.boolean().default(false) }),
+      run: async ({ archived }) => (await listServices(clinic.id, { archived })).map((s) => ({ name: s.name, category: s.category, minutes: s.durationMinutes, pricePesos: s.priceCentavos / 100, vatExempt: s.vatExempt, code: s.code })),
+    }),
+    defineTool({
       name: "get_patient",
       description: "One patient's record summary by MRN (including archived ones).",
       input: z.object({ mrn: mrnSchema }),
@@ -104,7 +113,81 @@ function writeTools(ctx: ClinicToolContext): AgentTool[] {
   const propose = async (kind: ClinicActionKind, args: unknown, summary: string, phrase?: string) => proposed(await createClinicPendingAction(who, kind, args, summary), ctx, phrase);
   const notFound = { proposed: false, note: "No patient with that MRN. Search for them first." };
 
+  const findServiceByName = async (name: string, archived = false): Promise<{ service: ServiceRow } | { problem: string }> => {
+    const needle = name.trim().toLowerCase();
+    const rows = await listServices(ctx.clinic.id, { archived });
+    const exact = rows.filter((row) => row.name.toLowerCase() === needle);
+    const found = exact.length > 0 ? exact : rows.filter((row) => row.name.toLowerCase().includes(needle));
+    if (found.length === 0) return { problem: `No ${archived ? "archived " : ""}service matches "${name}".` };
+    if (found.length > 1) return { problem: `More than one service matches: ${found.slice(0, 8).map((row) => row.name).join(", ")}. Ask which one.` };
+    return { service: found[0] };
+  };
+  const peso = (centavos: number) => formatPesoExact(centavos / 100);
+  const describe = (key: string, value: unknown) =>
+    key === "priceCentavos" ? peso(Number(value)) : key === "durationMinutes" ? (value ? `${value} min` : "none") : key === "vatExempt" ? (value ? "VAT-exempt" : "VATable") : String(value ?? "empty");
+
   return [
+    defineTool({
+      name: "propose_create_service",
+      description: "Prepare to add a service to the price list. pricePesos is the price in pesos. Check list_services first to avoid duplicates.",
+      input: z.object({
+        name: z.string().trim().min(2).max(120),
+        pricePesos: z.number().min(0).max(1_000_000),
+        category: z.string().trim().max(40).optional(),
+        durationMinutes: z.number().int().min(5).max(600).optional(),
+        vatExempt: z.boolean().default(false),
+        code: z.string().trim().max(20).optional(),
+      }),
+      run: async (args) => {
+        const service = serviceInputSchema.parse({ name: args.name, priceCentavos: args.pricePesos, category: args.category ?? "", durationMinutes: args.durationMinutes, vatExempt: args.vatExempt, code: args.code ?? "" });
+        return propose("create_service", service, `Add ${service.name} at ${peso(service.priceCentavos)}${service.durationMinutes ? `, ${service.durationMinutes} min` : ""}${service.vatExempt ? ", VAT-exempt" : ""}.`);
+      },
+    }),
+    defineTool({
+      name: "propose_update_service",
+      description: "Prepare to change a service's price (in pesos), name, category, duration, code or VAT status. The owner sees old and new values before confirming.",
+      input: z.object({
+        serviceName: z.string().trim().min(2).max(120),
+        changes: z
+          .object({ name: z.string().trim().min(2).max(120), pricePesos: z.number().min(0).max(1_000_000), category: z.string().trim().max(40), durationMinutes: z.number().int().min(5).max(600), vatExempt: z.boolean(), code: z.string().trim().max(20) })
+          .partial(),
+      }),
+      run: async ({ serviceName, changes }) => {
+        const picked = await findServiceByName(serviceName);
+        if ("problem" in picked) return { proposed: false, note: picked.problem };
+        const { pricePesos, ...rest } = changes;
+        const wanted: Record<string, unknown> = { ...rest, ...(pricePesos !== undefined && { priceCentavos: Math.round(pricePesos * 100) }) };
+        const current = picked.service as unknown as Record<string, unknown>;
+        const changed = Object.keys(wanted).filter((key) => wanted[key] !== current[key]);
+        if (changed.length === 0) return { proposed: false, note: "Those values are already what the price list has." };
+        const lines = changed.map((key) => `${key === "priceCentavos" ? "price" : key}: ${describe(key, current[key])} → ${describe(key, wanted[key])}`);
+        return propose(
+          "update_service",
+          { serviceId: picked.service.id, name: picked.service.name, changes: Object.fromEntries(changed.map((key) => [key, wanted[key]])), before: Object.fromEntries(changed.map((key) => [key, current[key]])) },
+          `Edit ${picked.service.name}: ${lines.join("; ")}.`,
+        );
+      },
+    }),
+    defineTool({
+      name: "propose_archive_service",
+      description: "Prepare to archive a service (stops new bookings and checkouts; past invoices keep it; can be restored). The owner must enter their password and type the service name.",
+      input: z.object({ serviceName: z.string().trim().min(2).max(120) }),
+      run: async ({ serviceName }) => {
+        const picked = await findServiceByName(serviceName);
+        if ("problem" in picked) return { proposed: false, note: picked.problem };
+        return propose("archive_service", { serviceId: picked.service.id, phrase: picked.service.name }, `Archive ${picked.service.name} (${peso(picked.service.priceCentavos)}). It can be restored.`, picked.service.name);
+      },
+    }),
+    defineTool({
+      name: "propose_restore_service",
+      description: "Prepare to restore an archived service.",
+      input: z.object({ serviceName: z.string().trim().min(2).max(120) }),
+      run: async ({ serviceName }) => {
+        const picked = await findServiceByName(serviceName, true);
+        if ("problem" in picked) return { proposed: false, note: picked.problem };
+        return propose("restore_service", { serviceId: picked.service.id, name: picked.service.name }, `Restore ${picked.service.name}.`);
+      },
+    }),
     defineTool({
       name: "propose_create_patient",
       description: "Prepare to add a new patient record. Search first to avoid duplicates. Nothing is saved until the owner confirms.",
@@ -183,4 +266,3 @@ export function buildClinicTools(ctx: ClinicToolContext): AgentTool[] {
   return [...readTools(ctx), ...writeTools(ctx)];
 }
 
-export { riskOf };

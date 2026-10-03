@@ -254,6 +254,13 @@ export async function getAgentClinic() {
   return clinic ? { user: current.user, clinic } : null;
 }
 
+/** The clinic on this host, for its owner only (setup pages such as the price list). */
+export async function requireActiveClinicOwner() {
+  const context = await requireActiveClinic();
+  if (context.clinic.role !== "owner") notFound();
+  return context;
+}
+
 /** Signed-in user who hasn't created a workspace yet; owners go to their console. */
 export async function requireOnboardingPending() {
   const current = await requireUser();

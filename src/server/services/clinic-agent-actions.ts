@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/src/server/db/client";
 import { agentActions } from "@/src/server/db/schema";
 import { newPatientByAssistantSchema, patientChangesSchema } from "@/src/lib/schemas/clinic-assistant";
+import { serviceInputSchema } from "@/src/lib/schemas/service";
 import {
   bookAppointment,
   changeAppointmentStatus,
@@ -15,6 +16,7 @@ import {
   updatePatient,
   type StaffClinic,
 } from "./clinic-app";
+import { createService, DuplicateServiceError, ServiceNotFoundError, setServiceArchived, StaleServiceError, updateService } from "./price-list";
 import { checkOwnPassword } from "./step-up";
 
 export type ClinicActor = { id: string; clinic: StaffClinic };
@@ -66,6 +68,38 @@ const ACTIONS = {
     run: async (who: ClinicActor, args: { patientId: string; startsAt: string; practitionerStaffId: string | null }) => {
       await bookAppointment(who.clinic, who.id, { patientId: args.patientId, startsAt: new Date(args.startsAt), practitionerStaffId: args.practitionerStaffId });
       return "Appointment booked.";
+    },
+  },
+  create_service: {
+    risk: "create" as Risk,
+    schema: serviceInputSchema,
+    run: async (who: ClinicActor, args: z.output<typeof serviceInputSchema>) => {
+      await createService(who.clinic.id, who.id, args);
+      return `Added ${args.name} to the price list.`;
+    },
+  },
+  update_service: {
+    risk: "edit" as Risk,
+    schema: z.object({ serviceId: z.uuid(), name: z.string(), changes: serviceInputSchema.partial(), before: z.record(z.string(), z.unknown()) }),
+    run: async (who: ClinicActor, args: { serviceId: string; name: string; changes: Partial<z.output<typeof serviceInputSchema>>; before: Record<string, unknown> }) => {
+      await updateService(who.clinic.id, who.id, args.serviceId, args.changes, args.before as Partial<z.output<typeof serviceInputSchema>>);
+      return `Updated ${args.name}.`;
+    },
+  },
+  archive_service: {
+    risk: "delete" as Risk,
+    schema: z.object({ serviceId: z.uuid(), phrase: z.string() }),
+    run: async (who: ClinicActor, args: { serviceId: string; phrase: string }) => {
+      await setServiceArchived(who.clinic.id, who.id, args.serviceId, true);
+      return `${args.phrase} archived. It can be restored.`;
+    },
+  },
+  restore_service: {
+    risk: "edit" as Risk,
+    schema: z.object({ serviceId: z.uuid(), name: z.string() }),
+    run: async (who: ClinicActor, args: { serviceId: string; name: string }) => {
+      await setServiceArchived(who.clinic.id, who.id, args.serviceId, false);
+      return `${args.name} restored.`;
     },
   },
   change_appointment_status: {
@@ -128,8 +162,10 @@ export async function confirmClinicAction(who: ClinicActor, actionId: string, in
   let grantUnlock = false;
   const stepUp = STEP_UP[spec.risk];
   if (stepUp === "password+typed") {
-    const mrn = (action.args as { mrn?: string }).mrn ?? "";
-    if (!input.typed || input.typed.trim().toUpperCase() !== mrn.toUpperCase()) return { ok: false, need: "typed", message: `Type ${mrn} to confirm.` };
+    // What must be typed back: a patient's MRN, or a service's name.
+    const { mrn, phrase } = action.args as { mrn?: string; phrase?: string };
+    const expected = (mrn ?? phrase ?? "").trim();
+    if (!input.typed || input.typed.trim().toUpperCase() !== expected.toUpperCase()) return { ok: false, need: "typed", message: `Type ${expected} to confirm.` };
   }
   if (stepUp === "password+typed" || (stepUp === "unlock" && !input.unlocked)) {
     if (!input.password) return { ok: false, need: "password", message: "Enter your password to continue." };
@@ -159,11 +195,12 @@ export async function confirmClinicAction(who: ClinicActor, actionId: string, in
     return { ok: true, message, grantUnlock };
   } catch (error) {
     const message =
-      error instanceof StaleChangeError ? "That record changed after the request was prepared. Ask again to see the current values."
-      : error instanceof NotFoundError ? "That record no longer exists."
+      error instanceof StaleChangeError || error instanceof StaleServiceError ? "That record changed after the request was prepared. Ask again to see the current values."
+      : error instanceof NotFoundError || error instanceof ServiceNotFoundError ? "That record no longer exists."
+      : error instanceof DuplicateServiceError ? "A service with that name already exists."
       : error instanceof TransitionError ? "That appointment has already moved on."
       : "That change failed. Nothing was changed.";
-    if (!(error instanceof StaleChangeError || error instanceof NotFoundError || error instanceof TransitionError)) {
+    if (!(error instanceof StaleChangeError || error instanceof StaleServiceError || error instanceof NotFoundError || error instanceof ServiceNotFoundError || error instanceof DuplicateServiceError || error instanceof TransitionError)) {
       console.error(`[agent] clinic action ${kind} failed:`, error instanceof Error ? error.message : "unknown error");
     }
     await db.update(agentActions).set({ status: "failed", result: message }).where(eq(agentActions.id, actionId));

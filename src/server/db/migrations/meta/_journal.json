@@ -78,6 +78,13 @@
       "when": 1790996811079,
       "tag": "0010_tenant_ai_access_and_clinic_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790998012492,
+      "tag": "0011_services_price_list",
+      "breakpoints": true
     }
   ]
 }

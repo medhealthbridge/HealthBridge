@@ -178,16 +178,6 @@ export const PENDING_REQUESTS: PendingRequest[] = [
   { id: "p2", patient: "Walk-in — R. Dizon", service: "Consultation", when: "Today · 3:00 PM" },
 ];
 
-export type Service = { name: string; meta: string; price: number; volume: number; revenue: number; vatExempt: boolean };
-
-export const SERVICES: Service[] = [
-  { name: "Oral Prophylaxis", meta: "45 min · hygienist", price: 1500, volume: 42, revenue: 63000, vatExempt: false },
-  { name: "Tooth Extraction", meta: "30 min · per tooth", price: 3500, volume: 21, revenue: 73500, vatExempt: false },
-  { name: "Root Canal Therapy", meta: "90 min · per session", price: 8500, volume: 18, revenue: 153000, vatExempt: false },
-  { name: "Dental Consultation", meta: "20 min · incl. x-ray", price: 800, volume: 66, revenue: 52800, vatExempt: true },
-  { name: "Denture Fitting", meta: "60 min · per arch", price: 12000, volume: 6, revenue: 72000, vatExempt: false },
-];
-
 export type StockStatus = "Critical" | "Low" | "OK";
 export const STOCK_STATUS_TONE: Record<StockStatus, Tone> = { Critical: "danger", Low: "warn", OK: "accent" };
 
