@@ -29,6 +29,7 @@ export function appNav(role: AppRole): NavGroup[] {
           { href: home, label: "My schedule", shortLabel: "Today", icon: "overview" },
           { href: `${home}/appointments`, label: "My calendar", shortLabel: "Calendar", icon: "appointments" },
           { href: `${home}/patients`, label: "Patients", icon: "patients" },
+          { href: `${home}/inventory`, label: "Inventory", icon: "inventory" },
         ],
       },
     ];
@@ -40,6 +41,7 @@ export function appNav(role: AppRole): NavGroup[] {
       { href: `${home}/appointments`, label: "Appointments", shortLabel: "Calendar", icon: "appointments" },
       { href: `${home}/patients`, label: "Patients", icon: "patients" },
       { href: `${home}/billing`, label: "Billing", icon: "billing" },
+      { href: `${home}/inventory`, label: "Inventory", icon: "inventory" },
     ],
   };
   if (role !== "owner") return [floor];
