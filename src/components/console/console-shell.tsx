@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { CONSOLE_THEME_COOKIE, type ConsoleTheme } from "@/src/lib/constants";
 import type { ConsoleBrand, ConsoleNotification, ConsoleUser, NavGroup, QuickAction } from "@/src/types/console";
+import { ConsoleMobileNav } from "./console-mobile-nav";
 import { ConsoleSidebar } from "./console-sidebar";
 import { ConsoleTopbar } from "./console-topbar";
 import { ToastProvider } from "./toast";
@@ -49,8 +50,9 @@ export function ConsoleShell({ initialTheme, brand, user, nav, searchPlaceholder
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <ConsoleTopbar nav={nav} searchPlaceholder={searchPlaceholder} quickActions={quickActions} notifications={notifications} slot={topbarSlot} />
-          <main className="flex min-w-0 flex-1 flex-col gap-4 px-3 pt-3.5 pb-10 md:px-5 md:pt-[18px] md:pb-11">{children}</main>
+          <main className="flex min-w-0 flex-1 flex-col gap-4 px-3 pt-3.5 pb-28 md:px-5 md:pt-[18px] md:pb-11">{children}</main>
         </div>
+        <ConsoleMobileNav nav={nav} user={user} theme={theme} onToggleTheme={toggleTheme} slot={sidebarSlot} />
       </ToastProvider>
     </div>
   );

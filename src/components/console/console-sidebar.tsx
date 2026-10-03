@@ -40,7 +40,7 @@ export function ConsoleSidebar({ brand, user, nav, collapsed, onToggleCollapsed,
         >
           {brand.initial}
         </span>
-        <div className={`min-w-0 flex-col ${collapsed ? "sr-only" : "hidden md:flex"}`}>
+        <div className={`min-w-0 flex-col ${collapsed ? "sr-only" : "flex"}`}>
           <span className="font-display text-[13.5px] font-extrabold whitespace-nowrap">{brand.name}</span>
           <span className="text-[10px] tracking-widest text-console-subtle uppercase">{brand.kicker}</span>
         </div>
@@ -48,7 +48,7 @@ export function ConsoleSidebar({ brand, user, nav, collapsed, onToggleCollapsed,
 
       {!collapsed && slot && <div className="hidden md:block">{slot}</div>}
 
-      <nav aria-label={`${brand.name} sections`} className="min-w-0 flex-1 overflow-x-auto md:overflow-x-visible md:overflow-y-auto">
+      <nav aria-label={`${brand.name} sections`} className="hidden min-w-0 flex-1 md:block md:overflow-y-auto">
         <div className="flex gap-1 md:block">
           {nav.map((group, index) => (
             <div key={group.label ?? index} className="flex gap-1 md:block">
@@ -98,18 +98,6 @@ export function ConsoleSidebar({ brand, user, nav, collapsed, onToggleCollapsed,
           ))}
         </div>
       </nav>
-
-      <button
-        type="button"
-        onClick={onToggleTheme}
-        aria-label={`Theme: ${themeLabel}. Switch theme`}
-        className={consoleButtonClass("secondary", "sm", "w-11 shrink-0 md:hidden")}
-      >
-        <ThemeGlyph aria-hidden="true" className="size-4" />
-      </button>
-      <SignOutButton aria-label="Log out" className={consoleButtonClass("secondary", "sm", "w-11 shrink-0 md:hidden")}>
-        <LogOut aria-hidden="true" className="size-4" />
-      </SignOutButton>
 
       <div className="hidden shrink-0 flex-col gap-2 border-t border-console-line pt-2.5 md:flex">
         <div className="flex items-center gap-2 px-1">
