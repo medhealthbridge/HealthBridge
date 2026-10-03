@@ -41,3 +41,7 @@ export const statusChangeSchema = z.object({
   appointmentId: z.uuid(),
   to: z.enum(["confirmed", "checked_in", "in_progress", "completed", "cancelled", "no_show"]),
 });
+
+/** The edit form sends every field; consent was captured at intake and isn't asked again. */
+export const editPatientSchema = newPatientSchema.omit({ consent: true });
+export type EditPatientField = keyof z.input<typeof editPatientSchema>;

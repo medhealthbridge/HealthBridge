@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gte, ilike, inArray, isNull, lt, max, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, max, or, sql } from "drizzle-orm";
 import { withTenant } from "@/src/server/db/client";
 import { appointments, auditLogs, clinicStaff, clinics, patients, user } from "@/src/server/db/schema";
 
@@ -42,12 +42,18 @@ export type PatientRow = {
   id: string;
   mrn: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
   kind: string;
   dateOfBirth: string | null;
   sex: string | null;
   phone: string | null;
   philhealth: string | null;
+  oscaId: string | null;
+  pwdId: string | null;
   discountId: string | null;
+  lastVisit: Date | null;
+  archived: boolean;
   createdAt: Date;
 };
 
@@ -193,13 +199,13 @@ export async function listPractitioners(clinicId: string): Promise<PractitionerO
 
 const PATIENT_LIMIT = 200;
 
-export async function listPatients(clinicId: string, query?: string): Promise<{ rows: PatientRow[]; total: number }> {
+export async function listPatients(clinicId: string, query?: string, archived = false): Promise<{ rows: PatientRow[]; total: number }> {
   const needle = query?.trim();
   const pattern = needle ? `%${needle.replace(/[\\%_]/g, "\\$&")}%` : null;
   return withTenant(clinicId, async (tx) => {
     const scope = and(
       eq(patients.clinicId, clinicId),
-      isNull(patients.deletedAt),
+      archived ? isNotNull(patients.deletedAt) : isNull(patients.deletedAt),
       pattern
         ? or(
             ilike(patients.firstName, pattern),
@@ -217,18 +223,33 @@ export async function listPatients(clinicId: string, query?: string): Promise<{ 
       .where(scope)
       .orderBy(asc(patients.lastName), asc(patients.firstName))
       .limit(PATIENT_LIMIT);
+    // Latest finished visit per listed patient, in one query.
+    const visits = rows.length
+      ? await tx
+          .select({ patientId: appointments.patientId, last: max(appointments.startsAt) })
+          .from(appointments)
+          .where(and(eq(appointments.clinicId, clinicId), eq(appointments.status, "completed"), inArray(appointments.patientId, rows.map((row) => row.id))))
+          .groupBy(appointments.patientId)
+      : [];
+    const lastVisit = new Map(visits.map((visit) => [visit.patientId, visit.last]));
     return {
       total,
       rows: rows.map((row) => ({
         id: row.id,
         mrn: row.medicalRecordNumber,
         name: fullName(row),
+        firstName: row.firstName,
+        lastName: row.lastName,
         kind: row.patientKind,
         dateOfBirth: row.dateOfBirth,
         sex: row.sex,
         phone: row.contactPhone,
         philhealth: row.philhealthMemberPin,
+        oscaId: row.oscaId,
+        pwdId: row.pwdId,
         discountId: row.oscaId ?? row.pwdId,
+        lastVisit: lastVisit.get(row.id) ?? null,
+        archived: row.deletedAt !== null,
         createdAt: row.createdAt,
       })),
     };
@@ -469,7 +490,7 @@ export async function updatePatient(
   actorUserId: string,
   patientId: string,
   changes: PatientChanges,
-  expectedBefore: PatientChanges,
+  expectedBefore?: PatientChanges,
 ) {
   const fields = Object.keys(changes) as PatientField[];
   if (fields.length === 0) throw new Error("No changes.");
@@ -482,7 +503,7 @@ export async function updatePatient(
       .limit(1);
     if (!current) throw new NotFoundError("patient");
     const read = (field: PatientField) => (current[COLUMN[field] as keyof typeof current] as string | null) ?? null;
-    if (fields.some((field) => read(field) !== (expectedBefore[field] ?? null))) throw new StaleChangeError();
+    if (expectedBefore && fields.some((field) => read(field) !== (expectedBefore[field] ?? null))) throw new StaleChangeError();
 
     const set = Object.fromEntries(fields.map((field) => [COLUMN[field], changes[field] ?? null]));
     await tx.update(patients).set(set).where(and(eq(patients.clinicId, clinicId), eq(patients.id, patientId)));
@@ -548,5 +569,31 @@ export async function findAppointment(clinicId: string, appointmentId: string) {
       .where(and(eq(appointments.clinicId, clinicId), eq(appointments.id, appointmentId), isNull(appointments.deletedAt)))
       .limit(1);
     return row ? { id: row.id, status: row.status as AppointmentStatus, startsAt: row.startsAt, patientName: fullName(row) } : null;
+  });
+}
+
+export type PatientChart = {
+  patient: PatientRecord;
+  visits: { id: string; startsAt: Date; status: AppointmentStatus; practitionerName: string | null; source: string }[];
+};
+
+/**
+ * A patient's chart. Opening one is itself recorded (action "view"), because
+ * who looked at a record is part of the audit trail.
+ */
+export async function openPatientChart(clinicId: string, actorUserId: string, mrn: string, includeArchived = false): Promise<PatientChart | null> {
+  const patient = await findPatientByMrn(clinicId, mrn, includeArchived);
+  if (!patient) return null;
+  return withTenant(clinicId, async (tx) => {
+    const visits = await tx
+      .select({ id: appointments.id, startsAt: appointments.startsAt, status: appointments.status, source: appointments.source, practitionerName: user.name })
+      .from(appointments)
+      .leftJoin(clinicStaff, and(eq(clinicStaff.clinicId, appointments.clinicId), eq(clinicStaff.id, appointments.practitionerStaffId)))
+      .leftJoin(user, eq(user.id, clinicStaff.userId))
+      .where(and(eq(appointments.clinicId, clinicId), eq(appointments.patientId, patient.id), isNull(appointments.deletedAt)))
+      .orderBy(desc(appointments.startsAt))
+      .limit(50);
+    await tx.insert(auditLogs).values({ clinicId, actorUserId, entityType: "patient", entityId: patient.id, action: "view" });
+    return { patient, visits: visits.map((visit) => ({ ...visit, status: visit.status as AppointmentStatus })) };
   });
 }

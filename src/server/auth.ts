@@ -261,6 +261,13 @@ export async function requireActiveClinicOwner() {
   return context;
 }
 
+/** The clinic on this host, for staff holding one of `roles`; anyone else gets a 404 (the server refuses what the UI hides). */
+export async function requireClinicRole(...roles: ("owner" | "assistant" | "practitioner")[]) {
+  const context = await requireActiveClinic();
+  if (!roles.includes(context.clinic.role)) notFound();
+  return context;
+}
+
 /** Signed-in user who hasn't created a workspace yet; owners go to their console. */
 export async function requireOnboardingPending() {
   const current = await requireUser();

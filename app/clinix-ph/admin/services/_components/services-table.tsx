@@ -6,7 +6,8 @@ import { consoleButtonClass } from "@/src/components/console/console-button";
 import { formatPesoExact } from "@/src/lib/utils";
 import { CLINIX_ROUTES } from "@/src/lib/constants";
 import type { ServiceRow } from "@/src/server/services/price-list";
-import { ArchiveServiceButton } from "./archive-service-button";
+import { ArchiveButton } from "@/src/components/console/archive-button";
+import { setServiceArchivedAction } from "@/src/server/actions/services";
 import { ServiceDialog } from "./service-dialog";
 
 const PATH = `${CLINIX_ROUTES.admin}/services`;
@@ -58,7 +59,7 @@ export function ServicesTable({ rows, archivedView }: { rows: ServiceRow[]; arch
                 <RowActions>
                   <div className="flex gap-1.5">
                     {!archivedView && <ServiceDialog service={service} />}
-                    <ArchiveServiceButton id={service.id} name={service.name} archived={archivedView} />
+                    <ArchiveButton id={service.id} name={service.name} noun="service" action={setServiceArchivedAction} archived={archivedView} consequence="It stops appearing for new bookings and checkouts. Past invoices still show it." />
                   </div>
                 </RowActions>
               </Td>

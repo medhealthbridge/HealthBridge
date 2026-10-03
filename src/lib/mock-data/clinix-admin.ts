@@ -6,7 +6,6 @@ import type {
   ConsoleBrand,
   ConsoleNotification,
   ConsoleUser,
-  DrawerAction,
   Kpi,
   MeterRow,
   NavGroup,
@@ -131,45 +130,6 @@ export const CLINIX_OPS_TILES: Stat[] = [
   { label: "Avg. wait time", value: "11 min", sub: "Across 28 patients today" },
   { label: "Chair utilisation", value: "82%", sub: "3 of 4 chairs occupied now" },
 ];
-
-export type Patient = {
-  mrn: string;
-  name: string;
-  meta: string;
-  lastVisit: string;
-  plan: string;
-  payor: string;
-  payorTone: Tone;
-  balance: number;
-};
-
-export const PATIENTS: Patient[] = [
-  { mrn: "MRN-0001", name: "Maria Santos", meta: "F · 34 · 0917 555 4412", lastVisit: "14 Sep 2026", plan: "Root canal (2 of 3)", payor: "Self-pay", payorTone: "neutral", balance: 5667 },
-  { mrn: "MRN-0002", name: "Joel Ramirez", meta: "M · 41 · 0918 220 8830", lastVisit: "18 Sep 2026", plan: "Prophylaxis", payor: "Maxicare", payorTone: "info", balance: 0 },
-  { mrn: "MRN-0003", name: "Andrea Tan", meta: "F · 9 · 0917 004 1121", lastVisit: "02 Sep 2026", plan: "Fluoride + sealant", payor: "Self-pay", payorTone: "neutral", balance: 1200 },
-  { mrn: "MRN-0004", name: "Ben Cruz", meta: "M · 58 · 0906 771 2288", lastVisit: "19 Sep 2026", plan: "Extraction", payor: "PhilHealth", payorTone: "accent", balance: 2800 },
-  { mrn: "MRN-0005", name: "Grace Ubaldo", meta: "F · 45 · 0920 447 1918", lastVisit: "11 Sep 2026", plan: "Consultation", payor: "Maxicare", payorTone: "info", balance: 0 },
-  { mrn: "MRN-0006", name: "Ramon Tolentino", meta: "M · 62 · 0917 333 7788", lastVisit: "08 Sep 2026", plan: "Denture fitting", payor: "Senior · SC", payorTone: "warn", balance: 9400 },
-];
-
-export const PATIENT_RECORD = {
-  assigned: "Dr. P. Reyes",
-  allergies: "Penicillin",
-  visits: [
-    { when: "14 Sep", title: "Root canal — session 2", meta: "Dr. Reyes · ₱8,500 · GCash" },
-    { when: "31 Aug", title: "Root canal — session 1", meta: "Dr. Reyes · ₱8,500 · GCash" },
-    { when: "18 Aug", title: "Consultation + x-ray", meta: "Dra. Villanueva · ₱800 · Cash" },
-    { when: "02 Aug", title: "Oral prophylaxis", meta: "Hygienist · ₱1,500 · Card" },
-  ],
-};
-
-export function patientDrawerActions(name: string): DrawerAction[] {
-  return [
-    { label: "New invoice", variant: "primary", toast: `Invoice started for ${name}` },
-    { label: "Reschedule", variant: "secondary", toast: "Opening the calendar" },
-    { label: "Send recall", variant: "secondary", toast: `Recall SMS queued for ${name}` },
-  ];
-}
 
 export type PendingRequest = { id: string; patient: string; service: string; when: string };
 
