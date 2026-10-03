@@ -6,8 +6,8 @@ export function AuditLogList({ entries }: { entries: AuditEntry[] }) {
   return (
     <Panel>
       <ul>
-        {entries.map((entry) => (
-          <li key={`${entry.action}-${entry.when}`} className="flex items-start gap-3 border-b border-console-line px-3.5 py-3 last:border-b-0">
+        {entries.map((entry, index) => (
+          <li key={`${entry.action}-${entry.when}-${index}`} className="flex items-start gap-3 border-b border-console-line px-3.5 py-3 last:border-b-0">
             <Pill tone={entry.tone} className="font-data">
               {entry.action}
             </Pill>

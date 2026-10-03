@@ -62,7 +62,7 @@ Rules that apply everywhere: every write and every patient-record view writes `a
 5. ~~Clinical notes~~ — **done.** practitioner writes notes per visit (per-specialty fields in `data`), amendments instead of edits after 24h, owner can read.
 6. ~~Checkout~~ — **done.** invoice from services, senior/PWD maths (`src/lib/pos-totals.ts`), payments (cash, GCash, Maya, card), void with reason, receipt numbering.
 7. ~~Inventory~~ — **done.** items, batches, stock in/out, low-stock and expiry alerts.
-8. **Activity log and Overview** — real audit trail page; dashboard KPIs from real tables.
+8. ~~Activity log and Overview~~ — **done.** real audit trail page; dashboard KPIs from real tables.
 9. **Patient portal (read-only)** — invite by email/OTP, own visits, receipts and upcoming appointments. No writes; consent and data requests are handled by staff.
 10. **Claims, reminders, import/export** — HMO/PhilHealth claims, email/SMS reminders, CSV import with preview.
 

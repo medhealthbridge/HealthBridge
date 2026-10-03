@@ -5,7 +5,7 @@ import { CLINIX_ROUTES } from "@/src/lib/constants";
 
 // Sections that read the clinic's own records. A section leaves the notice
 // only when it does — this is the list of what is genuinely live.
-const LIVE_SECTIONS = ["staff", "settings", "subscription", "assistant", "services", "patients", "appointments", "billing", "inventory"].map((section) => `${CLINIX_ROUTES.admin}/${section}`);
+const LIVE_SECTIONS = ["staff", "settings", "subscription", "assistant", "services", "patients", "appointments", "billing", "inventory", "activity"].map((section) => `${CLINIX_ROUTES.admin}/${section}`);
 
 /**
  * The rest of the console still renders example records. Under a real clinic's
@@ -15,6 +15,8 @@ const LIVE_SECTIONS = ["staff", "settings", "subscription", "assistant", "servic
 export function SampleDataNotice() {
   const pathname = usePathname();
   // A section's own sub-pages (e.g. a patient's chart) are live too.
+  // The overview itself is live.
+  if (pathname === CLINIX_ROUTES.admin) return null;
   if (LIVE_SECTIONS.some((section) => pathname === section || pathname.startsWith(`${section}/`))) return null;
 
   return (
