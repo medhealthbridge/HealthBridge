@@ -31,18 +31,27 @@ Status as of 2026-10-03. "Real" means it reads and writes the database; "mock" m
 
 ## 2. Target permissions (who may do what)
 
-| Data | Owner | Assistant | Practitioner | Patient |
-|---|---|---|---|---|
-| Services & prices | CRUD | Read | Read | Read (public list) |
-| Patients | CRUD (archive) | Create, read, edit contact details | Read | Own record only (read, edit contact) |
-| Appointments | CRUD | CRUD | Own: read, status | Own: request, cancel |
-| Clinical notes | Read | — | CRUD own notes (no delete after 24h; amendments only) | Own summary (read) |
-| Invoices / payments | CRUD (void, not delete) | Create, read | Read own patients' | Own receipts (read) |
-| Inventory | CRUD | Read, record use | Record use | — |
-| Staff | CRUD (deactivate, not delete) | — | — | — |
-| Settings, subscription | Edit | — | — | — |
+**The rule (decided 2026-10-03):** the patient has **read only**. Owner, practitioner and assistant create, edit and delete — each within their own area. "Delete" always means archive, void or amend (never a hard delete) because clinical and financial records must be kept.
 
-Rules that apply everywhere: nothing clinical or financial is hard-deleted (archive, void or amend instead); every write and every patient-record view writes `audit_logs`; the clinic comes from the session and host, never from a form.
+C = create, R = read, U = edit, D = delete (archive / void). "own" = only records that belong to that person.
+
+| Data | Owner | Assistant (front desk) | Practitioner | Patient |
+|---|---|---|---|---|
+| Services & prices | CRUD | R | R | R |
+| Patients (demographics, contact, IDs) | CRUD | CRUD | R (U contact only for own patients) | R own |
+| Appointments | CRUD | CRUD | R own, U status/notes on own | R own |
+| Clinical notes | R | — | CRU own (amend after 24h, D = void with reason) | R own summary |
+| Invoices / payments | CRUD (void) | CRU (void needs owner) | R own patients' | R own receipts |
+| Inventory | CRUD | R, record use | R, record use | — |
+| Staff & roles | CRUD (deactivate) | — | — | — |
+| Settings, subscription | U | — | — | — |
+
+What changes because the patient is read-only:
+- No patient login that writes anything. Patients cannot book, cancel, or edit their own details; they ask the front desk, who do it.
+- The patient portal becomes a simple read-only view (own visits, receipts, upcoming appointments).
+- Patient consent and data-access/deletion requests (RA 10173) are captured by staff on the patient's behalf, and logged.
+
+Rules that apply everywhere: every write and every patient-record view writes `audit_logs`; the clinic comes from the session and host, never from a form; the server refuses what a role may not do, not just the UI.
 
 ## 3. Phases (build in this order; each is shippable on its own)
 
@@ -54,7 +63,7 @@ Rules that apply everywhere: nothing clinical or financial is hard-deleted (arch
 6. **Checkout** — invoice from services, senior/PWD maths (`src/lib/pos-totals.ts`), payments (cash, GCash, Maya, card), void with reason, receipt numbering.
 7. **Inventory** — items, batches, stock in/out, low-stock and expiry alerts.
 8. **Activity log and Overview** — real audit trail page; dashboard KPIs from real tables.
-9. **Patient portal** — invite by email/OTP, own visits and receipts, booking requests, RA 10173 consent and data-access requests.
+9. **Patient portal (read-only)** — invite by email/OTP, own visits, receipts and upcoming appointments. No writes; consent and data requests are handled by staff.
 10. **Claims, reminders, import/export** — HMO/PhilHealth claims, email/SMS reminders, CSV import with preview.
 
 The AI assistant gains tools for each area as it lands, always confirm-first with step-up on edit/delete.
