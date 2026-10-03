@@ -174,12 +174,6 @@ export const CLAIMS: Claim[] = [
   { id: "MX-40988", payor: "Maxicare", patient: "Ramon Tolentino", amount: 6500, ageDays: 91, status: "Denied" },
 ];
 
-export const REMINDER_KPIS: Stat[] = [
-  { label: "Sent today", value: "142", sub: "SMS 88 · Viber 41 · Email 13" },
-  { label: "Delivered", value: "97.2%", tone: "accent", sub: "Above the 95% target" },
-  { label: "Failed", value: "4", tone: "danger", sub: "Retry queued automatically" },
-  { label: "Recalls due", value: "23", tone: "warn", sub: "6-month dental recalls this week" },
-];
 
 export type DeliveryStatus = "Delivered" | "Failed" | "Queued";
 export const DELIVERY_STATUS_TONE: Record<DeliveryStatus, Tone> = { Delivered: "accent", Failed: "danger", Queued: "neutral" };

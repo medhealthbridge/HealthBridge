@@ -1,4 +1,4 @@
-import { composePasswordResetEmail, composePatientInviteEmail, composePlatformInviteEmail, composeStaffInviteEmail, composeVerificationEmail } from "./email-templates";
+import { composePasswordResetEmail, composePatientInviteEmail, composeAppointmentReminderEmail, composePlatformInviteEmail, composeStaffInviteEmail, composeVerificationEmail } from "./email-templates";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -46,4 +46,8 @@ export async function sendStaffInviteEmail(invite: { clinicName: string; inviter
 
 export async function sendPatientInviteEmail(invite: { clinicName: string; email: string }, url: string) {
   await sendEmail({ to: invite.email, ...composePatientInviteEmail(invite.clinicName, url) });
+}
+
+export async function sendAppointmentReminderEmail(to: string, clinic: { name: string; phone: string | null }, when: string, service: string | null, url: string) {
+  await sendEmail({ to, ...composeAppointmentReminderEmail(clinic, when, service, url) });
 }

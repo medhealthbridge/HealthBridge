@@ -50,6 +50,8 @@ export const clinics = pgTable(
     phone: text("phone"),
     timezone: text("timezone").notNull().default("Asia/Manila"),
     businessHours: jsonb("business_hours"),
+    // Off until the owner turns it on: reminders email real patients.
+    remindersEnabled: boolean("reminders_enabled").notNull().default(false),
     brandingPrimaryColor: text("branding_primary_color"),
     brandingAccentColor: text("branding_accent_color"),
     brandingFont: text("branding_font"), // FONT_PAIRINGS key, see src/lib/constants.ts

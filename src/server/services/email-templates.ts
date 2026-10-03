@@ -93,3 +93,20 @@ export function composePatientInviteEmail(clinicName: string, url: string): Comp
     }),
   };
 }
+
+export function composeAppointmentReminderEmail(clinic: { name: string; phone: string | null }, when: string, service: string | null, url: string): ComposedEmail {
+  return {
+    subject: `Reminder: your appointment at ${clinic.name}`,
+    ...renderActionEmail({
+      preheader: `Your appointment is on ${when}.`,
+      heading: "Appointment reminder",
+      paragraphs: [
+        "Hi there,",
+        `This is a reminder of your appointment at ${clinic.name} on ${when}${service ? ` (${service})` : ""}.`,
+        clinic.phone ? `Need to change it? Please contact the clinic at ${clinic.phone}.` : "Need to change it? Please contact the clinic.",
+      ],
+      action: { label: "View clinic", url },
+      footnote: "You receive this because the clinic has your email for appointment reminders. Ask the clinic to remove it if you'd rather not.",
+    }),
+  };
+}

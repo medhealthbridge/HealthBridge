@@ -7,6 +7,7 @@ import { PageHeader } from "@/src/components/console/page-header";
 import { setPatientArchivedAction } from "@/src/server/actions/clinic-app";
 import type { PatientChart } from "@/src/server/services/clinic-app";
 import type { ClinicalNote } from "@/src/server/services/clinical-notes";
+import { PatientEmailDialog } from "./patient-email-dialog";
 import { InvitePortalDialog } from "./invite-portal-dialog";
 import { NotesPanel } from "./notes-panel";
 import type { Tone } from "@/src/types/console";
@@ -49,6 +50,7 @@ export function PatientChartView({ chart, backHref, canWrite, notes, canWriteNot
           canWrite ? (
             <>
               {!patient.archived && <PatientDialog patient={editable} />}
+              {!patient.archived && canInvite && <PatientEmailDialog patientId={patient.id} email={patient.email} />}
               {!patient.archived && canInvite && <InvitePortalDialog patientId={patient.id} patientName={patient.name} />}
               <ArchiveButton id={patient.id} name={patient.name} noun="patient" action={setPatientArchivedAction} archived={patient.archived} consequence="They stop appearing in the list and for new bookings. Their record, visits and history are kept." />
             </>

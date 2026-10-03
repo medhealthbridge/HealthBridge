@@ -457,6 +457,8 @@ export type PatientRecord = {
   sex: string | null;
   dateOfBirth: string | null;
   phone: string | null;
+  /** For appointment reminders. Edited on its own (setPatientEmail), not through the assistant. */
+  email: string | null;
   philhealth: string | null;
   oscaId: string | null;
   pwdId: string | null;
@@ -478,7 +480,7 @@ export async function findPatientByMrn(clinicId: string, mrn: string, includeArc
     return row
       ? {
           id: row.id, mrn: row.medicalRecordNumber, firstName: row.firstName, lastName: row.lastName, name: fullName(row), sex: row.sex,
-          dateOfBirth: row.dateOfBirth, phone: row.contactPhone, philhealth: row.philhealthMemberPin, oscaId: row.oscaId, pwdId: row.pwdId,
+          dateOfBirth: row.dateOfBirth, phone: row.contactPhone, email: row.contactEmail, philhealth: row.philhealthMemberPin, oscaId: row.oscaId, pwdId: row.pwdId,
           archived: row.deletedAt !== null,
         }
       : null;
