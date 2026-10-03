@@ -4,6 +4,7 @@ export type Tone = "accent" | "info" | "warn" | "danger" | "neutral";
 
 export type ConsoleIconName =
   | "overview"
+  | "assistant"
   | "tenants"
   | "billing"
   | "modules"

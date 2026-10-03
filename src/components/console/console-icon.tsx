@@ -1,5 +1,6 @@
 import {
   ArrowDownUp,
+  Bot,
   Blocks,
   Building2,
   CalendarClock,
@@ -22,6 +23,7 @@ import type { ConsoleIconName } from "@/src/types/console";
 
 const ICONS: Record<ConsoleIconName, LucideIcon> = {
   overview: LayoutDashboard,
+  assistant: Bot,
   tenants: Building2,
   billing: PhilippinePeso,
   modules: Blocks,

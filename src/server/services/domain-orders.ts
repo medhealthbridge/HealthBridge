@@ -1,6 +1,6 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { withAccount, withOrder, withTenant } from "@/src/server/db/client";
+import { withAccount, withOrder, withPlatformAdmin, withTenant } from "@/src/server/db/client";
 import { auditLogs, domainLookups, domainOrders, subscriptions, type DomainOrderStatus } from "@/src/server/db/schema";
 import { CLINIC_DOMAIN_SUFFIX, CLINIX_ROUTES, RESERVED_SUBDOMAINS } from "@/src/lib/constants";
 import { DOMAIN_YEARS, PLAN_FIRST_MONTH_CENTAVOS } from "@/src/lib/pricing";
@@ -222,4 +222,21 @@ export async function getClinicDomainOrder(clinicId: string) {
       .limit(1);
     return row ?? null;
   });
+}
+
+/** Paid orders that did not finish (taken domain, price moved, registrar error) and need a person. Company admin only. */
+export async function listOrdersNeedingReview() {
+  return withPlatformAdmin((tx) =>
+    tx
+      .select({
+        domain: domainOrders.domain,
+        totalCentavos: domainOrders.totalCentavos,
+        provider: domainOrders.provider,
+        reason: domainOrders.failureReason,
+        since: domainOrders.updatedAt,
+      })
+      .from(domainOrders)
+      .where(and(eq(domainOrders.status, "needs_review"), isNull(domainOrders.deletedAt)))
+      .orderBy(desc(domainOrders.updatedAt)),
+  );
 }

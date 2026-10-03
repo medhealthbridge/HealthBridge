@@ -24,7 +24,12 @@ export const COMPANY_AS_OF = "Sun 20 Sep 2026";
 export const COMPANY_SEARCH_PLACEHOLDER = "Search tenants, invoices, modules…";
 
 export const COMPANY_NAV: NavGroup[] = [
-  { items: [{ href: route(), label: "Overview", icon: "overview" }] },
+  {
+    items: [
+      { href: route(), label: "Overview", icon: "overview" },
+      { href: route("/assistant"), label: "Assistant", icon: "assistant" },
+    ],
+  },
   {
     label: "Accounts",
     items: [

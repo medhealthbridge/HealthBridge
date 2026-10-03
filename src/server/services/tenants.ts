@@ -15,6 +15,8 @@ export type TenantRow = {
   clinicList: TenantClinic[];
   mrr: number;
   renews: string;
+  /** The same date as `renews`, as a Date, for calculations. */
+  renewsAt: Date | null;
   joined: string;
 };
 
@@ -78,7 +80,30 @@ export async function listTenants(): Promise<TenantRow[]> {
       clinicList: list.map(({ name, subdomain, specialty }) => ({ name, subdomain, specialty })),
       mrr: status === "Active" ? (TIER_MRR[row.tier ?? ""] ?? 0) : 0,
       renews: renewsAt ? date.format(renewsAt) : "—",
+      renewsAt: renewsAt ?? null,
       joined: date.format(row.createdAt),
     };
   });
+}
+
+export type TenantSummary = {
+  total: number;
+  byStatus: Record<TenantStatus, number>;
+  activeMrr: number;
+  trialsEndingSoon: { name: string; endsOn: string }[];
+};
+
+/** Headline numbers for the admin overview and its assistant. `now` is injectable for tests. */
+export function summarizeTenants(rows: TenantRow[], now = new Date()): TenantSummary {
+  const byStatus: Record<TenantStatus, number> = { Active: 0, Trial: 0, "Past due": 0, Cancelled: 0 };
+  for (const row of rows) byStatus[row.status]++;
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  return {
+    total: rows.length,
+    byStatus,
+    activeMrr: rows.reduce((sum, row) => sum + row.mrr, 0),
+    trialsEndingSoon: rows
+      .filter((row) => row.status === "Trial" && row.renewsAt && row.renewsAt.getTime() - now.getTime() <= weekMs)
+      .map((row) => ({ name: row.name, endsOn: row.renews })),
+  };
 }
