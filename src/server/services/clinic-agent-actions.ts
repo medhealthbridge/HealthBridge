@@ -7,6 +7,7 @@ import { serviceInputSchema } from "@/src/lib/schemas/service";
 import {
   bookAppointment,
   changeAppointmentStatus,
+  clinicDateString,
   ConflictError,
   rescheduleAppointment,
   createPatient,
@@ -19,6 +20,10 @@ import {
   type StaffClinic,
 } from "./clinic-app";
 import { createService, DuplicateServiceError, ServiceNotFoundError, setServiceArchived, StaleServiceError, updateService } from "./price-list";
+import { createItem, DuplicateSkuError, consumeStock, InsufficientStockError, ItemNotFoundError, receiveStock } from "./inventory";
+import { ClaimClosedError, ClaimNotFoundError, createClaim, setClaimStatus, UnknownReceiptError } from "./claims";
+import { itemInputSchema } from "@/src/lib/schemas/inventory";
+import { claimInputSchema, CLAIM_STATUSES } from "@/src/lib/schemas/claim";
 import { checkOwnPassword } from "./step-up";
 
 export type ClinicActor = { id: string; clinic: StaffClinic };
@@ -112,6 +117,46 @@ const ACTIONS = {
       return `${args.name} restored.`;
     },
   },
+  create_item: {
+    risk: "create" as Risk,
+    schema: itemInputSchema,
+    run: async (who: ClinicActor, args: z.output<typeof itemInputSchema>) => {
+      await createItem(who.clinic.id, who.id, args);
+      return `Added ${args.name} to inventory.`;
+    },
+  },
+  receive_stock: {
+    risk: "create" as Risk,
+    schema: z.object({ itemId: z.uuid(), name: z.string(), quantity: z.number().int().min(1).max(100_000), lotNumber: z.string().nullable().default(null), expiresOn: z.iso.date().nullable().default(null) }),
+    run: async (who: ClinicActor, args: { itemId: string; name: string; quantity: number; lotNumber: string | null; expiresOn: string | null }) => {
+      await receiveStock(who.clinic.id, who.id, { itemId: args.itemId, quantity: args.quantity, lotNumber: args.lotNumber, expiresOn: args.expiresOn });
+      return `Received ${args.quantity} of ${args.name}.`;
+    },
+  },
+  use_stock: {
+    risk: "edit" as Risk,
+    schema: z.object({ itemId: z.uuid(), name: z.string(), quantity: z.number().int().min(1).max(100_000), reason: z.string().nullable().default(null) }),
+    run: async (who: ClinicActor, args: { itemId: string; name: string; quantity: number; reason: string | null }) => {
+      await consumeStock(who.clinic.id, who.id, clinicToday(who.clinic), { itemId: args.itemId, quantity: args.quantity, reason: args.reason });
+      return `Recorded ${args.quantity} of ${args.name} used.`;
+    },
+  },
+  file_claim: {
+    risk: "create" as Risk,
+    schema: claimInputSchema.extend({ patientName: z.string() }),
+    run: async (who: ClinicActor, args: z.output<typeof claimInputSchema> & { patientName: string }) => {
+      await createClaim(who.clinic.id, who.id, args);
+      return `Filed a claim with ${args.payorName} for ${args.patientName}.`;
+    },
+  },
+  set_claim_status: {
+    risk: "edit" as Risk,
+    schema: z.object({ claimId: z.uuid(), label: z.string(), to: z.enum(CLAIM_STATUSES).exclude(["withdrawn"]) }),
+    run: async (who: ClinicActor, args: { claimId: string; label: string; to: (typeof CLAIM_STATUSES)[number] }) => {
+      await setClaimStatus(who.clinic.id, who.id, args.claimId, args.to);
+      return `${args.label} marked ${args.to}.`;
+    },
+  },
   change_appointment_status: {
     risk: "edit" as Risk,
     schema: z.object({ appointmentId: z.uuid(), to: z.enum(["confirmed", "cancelled", "no_show"]) }),
@@ -148,6 +193,7 @@ export type ConfirmOutcome =
   | { ok: false; message: string; need?: "password" | "typed" };
 
 const startOfToday = (clinic: StaffClinic) => dayBounds(clinic.timezone).start;
+const clinicToday = (clinic: StaffClinic) => clinicDateString(clinic.timezone);
 
 /**
  * Applies one of this clinic's proposals, if every check passes, in this order:
@@ -208,10 +254,16 @@ export async function confirmClinicAction(who: ClinicActor, actionId: string, in
       error instanceof StaleChangeError || error instanceof StaleServiceError ? "That record changed after the request was prepared. Ask again to see the current values."
       : error instanceof NotFoundError || error instanceof ServiceNotFoundError ? "That record no longer exists."
       : error instanceof DuplicateServiceError ? "A service with that name already exists."
+      : error instanceof ItemNotFoundError ? "That inventory item no longer exists."
+      : error instanceof InsufficientStockError ? `Only ${error.available} in date. Nothing was changed.`
+      : error instanceof DuplicateSkuError ? "Another item already uses that SKU."
+      : error instanceof ClaimNotFoundError || error instanceof ClaimClosedError ? "That claim can't be changed any more."
+      : error instanceof UnknownReceiptError ? "No receipt with that number."
       : error instanceof ConflictError ? "That practitioner already has an appointment at that time."
       : error instanceof TransitionError ? "That appointment has already moved on."
       : "That change failed. Nothing was changed.";
-    if (!(error instanceof StaleChangeError || error instanceof StaleServiceError || error instanceof NotFoundError || error instanceof ServiceNotFoundError || error instanceof DuplicateServiceError || error instanceof ConflictError || error instanceof TransitionError)) {
+    const expected = error instanceof ItemNotFoundError || error instanceof InsufficientStockError || error instanceof DuplicateSkuError || error instanceof ClaimNotFoundError || error instanceof ClaimClosedError || error instanceof UnknownReceiptError;
+    if (!expected && !(error instanceof StaleChangeError || error instanceof StaleServiceError || error instanceof NotFoundError || error instanceof ServiceNotFoundError || error instanceof DuplicateServiceError || error instanceof ConflictError || error instanceof TransitionError)) {
       console.error(`[agent] clinic action ${kind} failed:`, error instanceof Error ? error.message : "unknown error");
     }
     await db.update(agentActions).set({ status: "failed", result: message }).where(eq(agentActions.id, actionId));

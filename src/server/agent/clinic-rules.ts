@@ -3,7 +3,7 @@ import type { RuleRunner } from "./rules";
 type Overview = { clinic: string; appointmentsToday: number; byStatus: Record<string, number>; patientRecords: number };
 type Appt = { time: string; patient: string; status: string; practitioner: string | null };
 
-const CHANGE_WORDS = /\b(add|create|register|edit|update|change|rename|archive|delete|remove|restore|book|cancel|reschedule|move|set|mark)\b/i;
+const CHANGE_WORDS = /\b(add|create|register|edit|update|change|rename|archive|delete|remove|restore|book|cancel|reschedule|move|set|mark|receive|use|file|record)\b/i;
 const STATUS_LABEL: Record<string, string> = { requested: "requested", confirmed: "booked", checked_in: "waiting", in_progress: "in chair", completed: "done", cancelled: "cancelled", no_show: "no-show" };
 
 /** Free instant answers for the questions a clinic owner asks every day. Anything that changes data goes to a model, which can only propose. */
@@ -12,7 +12,7 @@ export async function answerClinicByRules(question: string, run: RuleRunner, tim
   if (text.length > 140 || CHANGE_WORDS.test(text)) return null;
 
   if (/^(hi|hello|hey|help|what can you do)\b/i.test(text)) {
-    return "I can tell you how today looks, list today's or tomorrow's appointments, find patients (“find Santos”) and look up prices (“how much is a cleaning?”). I can also prepare changes — patients, bookings and the price list — which only happen after you confirm.";
+    return "I can tell you how today looks, list today's or tomorrow's appointments, find patients (“find Santos”) and look up prices (“how much is a cleaning?”). I can also report revenue, receipts, stock and claims, and prepare changes — patients, bookings, prices, inventory and claims — which only happen after you confirm.";
   }
   if (/\b(appointments?|schedule|queue)\b.*\b(today|tomorrow)\b|\b(today|tomorrow)\b.*\b(appointments?|schedule|queue)\b/i.test(text)) {
     const when = /tomorrow/i.test(text) ? "tomorrow" : "today";

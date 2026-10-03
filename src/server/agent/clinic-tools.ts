@@ -16,7 +16,15 @@ import {
 import { createClinicPendingAction, type ClinicActionKind } from "@/src/server/services/clinic-agent-actions";
 import { listServices, type ServiceRow } from "@/src/server/services/price-list";
 import { serviceInputSchema } from "@/src/lib/schemas/service";
+import { claimInputSchema } from "@/src/lib/schemas/claim";
 import { formatPesoExact } from "@/src/lib/utils";
+import { listInventory, type InventoryRow } from "@/src/server/services/inventory";
+import { listInvoices } from "@/src/server/services/billing";
+import { listClaims, summarizeClaims } from "@/src/server/services/claims";
+import { listActivity } from "@/src/server/services/activity";
+import { getOverview } from "@/src/server/services/overview";
+import { clinicDateString } from "@/src/server/services/clinic-app";
+import { CLAIM_STATUSES, PAYOR_TYPES } from "@/src/lib/schemas/claim";
 import { defineTool, type AgentTool, type Proposal } from "./core";
 
 export type ClinicToolContext = {
@@ -54,6 +62,46 @@ function dayInstant(when: string, clinic: StaffClinic) {
 function readTools(ctx: ClinicToolContext): AgentTool[] {
   const { clinic } = ctx;
   return [
+    defineTool({
+      name: "get_money_today",
+      description: "Revenue today against the same day last week, collections by payment method over 30 days, and stock alerts. Read-only.",
+      input: z.object({}),
+      run: async () => {
+        const o = await getOverview(clinic);
+        return { revenueToday: o.kpis[0].value, vsLastWeek: o.kpis[0].delta, receiptsToday: o.kpis[3].value, collections30Days: o.collections.map((c) => ({ method: c.name, amount: c.value, percent: c.pct })), stockAlerts: o.lowStock.length };
+      },
+    }),
+    defineTool({
+      name: "list_receipts",
+      description: "The 15 most recent official receipts: number, patient, total, how paid, status. Read-only; voiding a receipt is done by the owner on the Billing page, not here.",
+      input: z.object({}),
+      run: async () => (await listInvoices(clinic.id, { limit: 15 })).map((r) => ({ receipt: r.invoiceNumber, patient: r.patientName, mrn: r.patientMrn, totalPesos: r.totalCents / 100, paidBy: r.method, status: r.status, date: r.issuedAt?.toISOString().slice(0, 10) ?? null })),
+    }),
+    defineTool({
+      name: "list_inventory",
+      description: "Inventory items with stock on hand, reorder level, next expiry and status (ok, low, out, expiring). Use attention=true for only the ones needing action.",
+      input: z.object({ attention: z.boolean().default(false) }),
+      run: async ({ attention }) => {
+        const rows = await listInventory(clinic.id, clinicDateString(clinic.timezone));
+        return rows.filter((r) => !attention || r.status !== "ok" || r.expiredQty > 0).map((r) => ({ name: r.name, sku: r.sku, unit: r.unit, onHand: r.onHand, reorderAt: r.reorderThreshold, nextExpiry: r.nextExpiry, expiredQty: r.expiredQty, status: r.status }));
+      },
+    }),
+    defineTool({
+      name: "list_claims",
+      description: "PhilHealth and HMO claims with id, patient, payor, amount, status and age in days, plus the outstanding total.",
+      input: z.object({ status: z.enum(CLAIM_STATUSES).optional() }),
+      run: async ({ status }) => {
+        const rows = await listClaims(clinic.id);
+        const summary = summarizeClaims(rows);
+        return { outstandingPesos: summary.outstandingCents / 100, openClaims: summary.openCount, overSixtyDaysPesos: summary.overSixtyCents / 100, claims: rows.filter((r) => !status || r.status === status).slice(0, 30).map((r) => ({ id: r.id, patient: r.patientName, mrn: r.patientMrn, payor: r.payorName, amountPesos: r.claimAmountCents / 100, status: r.status, ageDays: r.ageDays })) };
+      },
+    }),
+    defineTool({
+      name: "recent_activity",
+      description: "The latest 15 entries of the clinic's activity log (who did what). Read-only.",
+      input: z.object({}),
+      run: async () => (await listActivity(clinic.id, clinic.timezone, { limit: 15 })).map((e) => ({ what: e.meta, by: e.by.split(" · ")[0], when: e.when })),
+    }),
     defineTool({
       name: "get_clinic_overview",
       description: "Today at a glance: appointments by status and how many patient records the clinic has.",
@@ -122,11 +170,70 @@ function writeTools(ctx: ClinicToolContext): AgentTool[] {
     if (found.length > 1) return { problem: `More than one service matches: ${found.slice(0, 8).map((row) => row.name).join(", ")}. Ask which one.` };
     return { service: found[0] };
   };
+  const findItem = async (name: string): Promise<{ item: InventoryRow } | { problem: string }> => {
+    const needle = name.trim().toLowerCase();
+    const rows = await listInventory(ctx.clinic.id, clinicDateString(ctx.clinic.timezone));
+    const exact = rows.filter((row) => row.name.toLowerCase() === needle);
+    const found = exact.length > 0 ? exact : rows.filter((row) => row.name.toLowerCase().includes(needle));
+    if (found.length === 0) return { problem: `No inventory item matches "${name}". Offer to add it with propose_create_item.` };
+    if (found.length > 1) return { problem: `More than one item matches: ${found.slice(0, 8).map((row) => row.name).join(", ")}. Ask which one.` };
+    return { item: found[0] };
+  };
   const peso = (centavos: number) => formatPesoExact(centavos / 100);
   const describe = (key: string, value: unknown) =>
     key === "priceCentavos" ? peso(Number(value)) : key === "durationMinutes" ? (value ? `${value} min` : "none") : key === "vatExempt" ? (value ? "VAT-exempt" : "VATable") : String(value ?? "empty");
 
   return [
+    defineTool({
+      name: "propose_create_item",
+      description: "Prepare to add an inventory item (name, optional SKU, unit like box, reorder level). Check list_inventory first to avoid duplicates.",
+      input: z.object({ name: z.string().trim().min(2).max(120), sku: z.string().trim().max(40).optional(), unit: z.string().trim().min(1).max(20).default("unit"), reorderThreshold: z.number().int().min(0).max(100_000).default(0) }),
+      run: (args) => propose("create_item", { name: args.name, sku: args.sku ?? "", unit: args.unit, reorderThreshold: args.reorderThreshold }, `Add inventory item ${args.name} (${args.unit}, reorder at ${args.reorderThreshold}).`),
+    }),
+    defineTool({
+      name: "propose_receive_stock",
+      description: "Prepare to record a delivery of an existing inventory item as a new lot, with optional lot number and expiry (YYYY-MM-DD).",
+      input: z.object({ itemName: z.string().trim().min(2).max(120), quantity: z.number().int().min(1).max(100_000), lotNumber: z.string().trim().max(40).optional(), expiresOn: z.iso.date().optional() }),
+      run: async ({ itemName, quantity, lotNumber, expiresOn }) => {
+        const picked = await findItem(itemName);
+        if ("problem" in picked) return { proposed: false, note: picked.problem };
+        return propose("receive_stock", { itemId: picked.item.id, name: picked.item.name, quantity, lotNumber: lotNumber ?? null, expiresOn: expiresOn ?? null }, `Receive ${quantity} ${picked.item.unit} of ${picked.item.name}${expiresOn ? `, expiring ${expiresOn}` : ""}.`);
+      },
+    }),
+    defineTool({
+      name: "propose_record_stock_use",
+      description: "Prepare to record stock used (takes the earliest-expiring lot first). Refused if there is not enough in date.",
+      input: z.object({ itemName: z.string().trim().min(2).max(120), quantity: z.number().int().min(1).max(100_000), reason: z.string().trim().max(120).optional() }),
+      run: async ({ itemName, quantity, reason }) => {
+        const picked = await findItem(itemName);
+        if ("problem" in picked) return { proposed: false, note: picked.problem };
+        if (picked.item.onHand < quantity) return { proposed: false, note: `Only ${picked.item.onHand} ${picked.item.unit} of ${picked.item.name} in date.` };
+        return propose("use_stock", { itemId: picked.item.id, name: picked.item.name, quantity, reason: reason ?? null }, `Record ${quantity} ${picked.item.unit} of ${picked.item.name} used (${picked.item.onHand} on hand now).`);
+      },
+    }),
+    defineTool({
+      name: "propose_file_claim",
+      description: "Prepare to file a PhilHealth or HMO claim for a patient (MRN), with payor name, amount in pesos and optional LOA, member number or receipt number.",
+      input: z.object({ mrn: mrnSchema, payorType: z.enum(PAYOR_TYPES), payorName: z.string().trim().min(2).max(80), amountPesos: z.number().min(1).max(10_000_000), loaNumber: z.string().trim().max(40).optional(), memberOrPolicyNumber: z.string().trim().max(40).optional(), receiptNumber: z.string().trim().max(20).optional() }),
+      run: async (args) => {
+        const patient = await findPatientByMrn(ctx.clinic.id, args.mrn);
+        if (!patient) return notFound;
+        const input = claimInputSchema.parse({ patientId: patient.id, payorType: args.payorType, payorName: args.payorName, claimAmountCents: args.amountPesos, loaNumber: args.loaNumber ?? "", memberOrPolicyNumber: args.memberOrPolicyNumber ?? "", receiptNumber: args.receiptNumber ?? "", notes: "" });
+        return propose("file_claim", { ...input, patientName: patient.name }, `File a ${args.payorType === "philhealth" ? "PhilHealth" : "HMO"} claim with ${args.payorName} for ${patient.name} (${args.mrn}): ${peso(input.claimAmountCents)}.`);
+      },
+    }),
+    defineTool({
+      name: "propose_set_claim_status",
+      description: "Prepare to move a claim (id from list_claims) to filed, pending, approved, denied, resubmitted or paid. Withdrawing a claim is done on the Claims page, not here.",
+      input: z.object({ claimId: z.uuid(), to: z.enum(CLAIM_STATUSES).exclude(["withdrawn"]) }),
+      run: async ({ claimId, to }) => {
+        const claim = (await listClaims(ctx.clinic.id)).find((row) => row.id === claimId);
+        if (!claim) return { proposed: false, note: "No such claim at this clinic." };
+        if (claim.status === "paid" || claim.status === "withdrawn") return { proposed: false, note: `That claim is already ${claim.status}.` };
+        const label = `${claim.patientName}'s ${claim.payorName} claim`;
+        return propose("set_claim_status", { claimId, label, to }, `Mark ${label} (${peso(claim.claimAmountCents)}) as ${to}.`);
+      },
+    }),
     defineTool({
       name: "propose_create_service",
       description: "Prepare to add a service to the price list. pricePesos is the price in pesos. Check list_services first to avoid duplicates.",
