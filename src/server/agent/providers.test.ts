@@ -5,7 +5,7 @@ import { runGeminiLoop } from "./providers/gemini";
 import { runProviderChain } from "./providers";
 
 const input = { system: "s", tools: [], history: [{ role: "user" as const, content: "hi" }] };
-const provider = (id: AgentProvider["id"], run: AgentProvider["run"]): AgentProvider => ({ id, model: "m", configured: () => true, run });
+const provider = (id: AgentProvider["id"], run: AgentProvider["run"]): AgentProvider => ({ id, model: "m", run });
 const done = { text: "ok", steps: 1, usage: { inputTokens: 1, outputTokens: 1 }, stopped: "done" as const };
 
 describe("runProviderChain", () => {

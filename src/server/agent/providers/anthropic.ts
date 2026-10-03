@@ -42,12 +42,7 @@ export async function runAnthropicLoop(client: AnthropicClient, model: string, {
   return { text: "", steps: maxSteps, usage, stopped: "step_limit" };
 }
 
-export function anthropicProvider(): AgentProvider {
+export function anthropicProvider(apiKey: string): AgentProvider {
   const model = process.env.ADMIN_AGENT_MODEL || DEFAULT_MODEL;
-  return {
-    id: "anthropic",
-    model,
-    configured: () => Boolean(process.env.ANTHROPIC_API_KEY),
-    run: (input) => runAnthropicLoop(new Anthropic(), model, input),
-  };
+  return { id: "anthropic", model, run: (input) => runAnthropicLoop(new Anthropic({ apiKey }), model, input) };
 }

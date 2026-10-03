@@ -46,12 +46,7 @@ export async function runGeminiLoop(ai: GeminiModels, model: string, { system, t
   return { text: "", steps: maxSteps, usage, stopped: "step_limit" };
 }
 
-export function geminiProvider(): AgentProvider {
+export function geminiProvider(apiKey: string): AgentProvider {
   const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
-  return {
-    id: "gemini",
-    model,
-    configured: () => Boolean(process.env.GEMINI_API_KEY),
-    run: (input) => runGeminiLoop(new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }), model, input),
-  };
+  return { id: "gemini", model, run: (input) => runGeminiLoop(new GoogleGenAI({ apiKey }), model, input) };
 }

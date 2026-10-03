@@ -1,10 +1,12 @@
 import type { AgentProvider, AgentResult, ProviderRunInput } from "../core";
+import { getSecret } from "@/src/server/services/platform-secrets";
 import { anthropicProvider } from "./anthropic";
 import { geminiProvider } from "./gemini";
 
-/** Gemini first, Claude second: whichever have keys, in that order. */
-export function configuredProviders(): AgentProvider[] {
-  return [geminiProvider(), anthropicProvider()].filter((provider) => provider.configured());
+/** Gemini first, Claude second: whichever have a key, pasted in the admin or set in the environment. */
+export async function configuredProviders(): Promise<AgentProvider[]> {
+  const [gemini, claude] = await Promise.all([getSecret("gemini_api_key"), getSecret("anthropic_api_key")]);
+  return [...(gemini ? [geminiProvider(gemini)] : []), ...(claude ? [anthropicProvider(claude)] : [])];
 }
 
 export type ChainResult = AgentResult & { provider: AgentProvider["id"]; model: string };

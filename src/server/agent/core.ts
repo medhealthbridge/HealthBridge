@@ -41,7 +41,6 @@ export type ProviderRunInput = {
 export type AgentProvider = {
   id: "gemini" | "anthropic";
   model: string;
-  configured: () => boolean;
   run: (input: ProviderRunInput) => Promise<AgentResult>;
 };
 

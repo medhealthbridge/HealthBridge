@@ -26,7 +26,7 @@ Rules:
 - Be brief. Lead with the answer, then the few numbers that support it. Plain text, no tables unless asked.`;
 }
 
-const NO_AI = "That needs the AI layer, which isn't switched on yet (add GEMINI_API_KEY). The questions I answer without it: business summary, trials, past due, domain orders, your team, and tenant details.";
+const NO_AI = "That needs the AI layer, which isn't switched on yet (paste a Gemini key under AI settings). The questions I answer without it: business summary, trials, past due, domain orders, your team, and tenant details.";
 
 /**
  * Three layers, cheapest first: instant rules (free), then Gemini, then Claude if
@@ -47,7 +47,7 @@ export async function askAdminAssistant(input: { userId: string; canPropose: boo
     return { reply: byRules, by: "rules", proposals };
   }
 
-  const providers = configuredProviders();
+  const providers = await configuredProviders();
   if (providers.length === 0) return { reply: NO_AI, by: "rules", proposals };
 
   const { aiCalls } = await usageToday(input.userId);
@@ -74,6 +74,6 @@ export async function askAdminAssistant(input: { userId: string; canPropose: boo
 }
 
 /** Whether any layer beyond the free rules is available. */
-export function aiLayerConfigured() {
-  return configuredProviders().length > 0;
+export async function aiLayerConfigured() {
+  return (await configuredProviders()).length > 0;
 }

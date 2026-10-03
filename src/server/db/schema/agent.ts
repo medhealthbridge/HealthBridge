@@ -43,3 +43,19 @@ export const agentUsage = pgTable(
   },
   (table) => ({ userDayIdx: index("agent_usage_user_created_idx").on(table.userId, table.createdAt) }),
 );
+
+export const SECRET_KEYS = ["gemini_api_key", "anthropic_api_key"] as const;
+export type SecretKey = (typeof SECRET_KEYS)[number];
+
+/**
+ * Credentials the company admin pastes into the admin site, stored encrypted
+ * (AES-256-GCM, see services/secret-box.ts). Only `last4` is ever shown back.
+ * Global like `platform_admins`: read only by server code after requireSuperAdmin().
+ */
+export const platformSecrets = pgTable("platform_secrets", {
+  key: text("key").$type<SecretKey>().primaryKey(),
+  valueEncrypted: text("value_encrypted").notNull(),
+  last4: text("last4").notNull(),
+  updatedByUserId: text("updated_by_user_id").notNull().references(() => user.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -50,6 +50,7 @@ export const COMPANY_NAV: NavGroup[] = [
       { href: route("/staff"), label: "Company staff", shortLabel: "Staff", icon: "staff" },
       { href: route("/feedback"), label: "Feedbacks", icon: "feedback" },
       { href: route("/audit"), label: "Audit log", icon: "audit" },
+      { href: route("/ai-settings"), label: "AI settings", icon: "settings" },
     ],
   },
 ];

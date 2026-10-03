@@ -22,7 +22,7 @@ export default async function AssistantPage() {
   return (
     <>
       <PageHeader title="Assistant" description={role === "super_admin" ? "Ask about tenants, revenue, your team and domain orders. Changes it prepares only happen after you confirm." : "Ask about tenants, revenue, your team and domain orders. It reads live data."} />
-      <AssistantChat suggestions={SUGGESTIONS} aiConfigured={aiLayerConfigured()} usage={usage} />
+      <AssistantChat suggestions={SUGGESTIONS} aiConfigured={await aiLayerConfigured()} usage={usage} />
     </>
   );
 }
