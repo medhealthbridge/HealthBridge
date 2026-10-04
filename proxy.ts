@@ -48,5 +48,5 @@ export function proxy(request: NextRequest) {
 
 // Static assets and image routes never need the host checks.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|webp|ico|css|js|woff2?)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|webp|ico|css|js|woff2?|html)$|manifest.webmanifest).*)"],
 };
