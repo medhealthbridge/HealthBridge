@@ -73,8 +73,10 @@ export function ConsoleMobileNav({ nav, user, theme, onToggleTheme, slot }: Cons
       </nav>
 
       <ConsoleDialog open={moreOpen} onClose={() => setMoreOpen(false)} label="More" placement="bottom">
-        <div className="relative flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-3 pb-6">
+        {/* Sized by its content and capped by an explicit max height. A flex-1 list inside a sheet with no fixed
+            height collapses to nothing in Safari, which left a one-row list on top of the footer buttons. */}
+        <div className="relative shrink-0">
+        <div className="flex max-h-[calc(92dvh-6rem-env(safe-area-inset-bottom))] flex-col gap-2 overflow-y-auto overscroll-contain p-3 pb-6">
           <div className="flex items-center gap-2.5 px-1 pt-1">
             <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-console-info text-xs font-bold text-console-on-accent">
               {user.initials}
