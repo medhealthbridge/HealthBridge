@@ -15,6 +15,8 @@ import {
 } from "@/src/server/services/clinic-app";
 import { consumeRateLimit } from "@/src/server/services/rate-limit";
 import { CLINIX_ROUTES } from "@/src/lib/constants";
+import { validateCustomFields } from "@/src/lib/patient-fields";
+import { listFieldDefinitions, visibleTo } from "@/src/server/services/patient-fields";
 import {
   editPatientSchema,
   newPatientSchema,
@@ -26,7 +28,7 @@ import {
 } from "@/src/lib/schemas/clinic-app";
 import type { FormState } from "@/src/types/form-state";
 
-export type NewPatientState = FormState<NewPatientField> & { savedName?: string };
+export type NewPatientState = FormState<NewPatientField> & { savedName?: string; customErrors?: string[] };
 export type EditPatientState = FormState<EditPatientField> & { savedName?: string };
 export type WalkInState = FormState<WalkInField> & { queueNumber?: number };
 
@@ -52,9 +54,16 @@ export async function addPatientAction(_previous: NewPatientState, data: FormDat
   const parsed = newPatientSchema.safeParse({ ...values, consent: text(data, "consent") });
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors, values };
 
+  // The clinic's own fields: only those this role may see (the front desk never gets medical ones).
+  const fields = visibleTo(clinic.role, (await listFieldDefinitions(clinic.id)).filter((field) => !field.archived));
+  const answers = Object.fromEntries(fields.map((field) => [field.key, field.type === "multi_select" ? data.getAll(`cf.${field.key}`).map(String) : text(data, `cf.${field.key}`)]));
+  const custom = validateCustomFields(fields, answers);
+  if (custom.errors.length) return { values, customErrors: custom.errors };
+  const customFields = Object.fromEntries(Object.entries(custom.values).filter(([, value]) => value !== null));
+
   const { consent, ...record } = parsed.data;
   void consent; // required to reach here; stamped as dataPrivacyConsentAt by the service
-  await createPatient(clinic.id, user.id, record);
+  await createPatient(clinic.id, user.id, { ...record, customFields });
   refreshApp();
   return { savedName: `${record.firstName} ${record.lastName}` };
 }

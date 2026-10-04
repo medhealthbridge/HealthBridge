@@ -10,13 +10,15 @@ import { FormField } from "@/src/components/console/form-field";
 import { useToast } from "@/src/components/console/toast";
 import { addPatientAction, updatePatientAction, type EditPatientState, type NewPatientState } from "@/src/server/actions/clinic-app";
 import type { PatientRow } from "@/src/server/services/clinic-app";
+import type { FieldDefinition } from "@/src/lib/patient-fields";
+import { FieldInput } from "@/src/components/patient-fields/field-input";
 
 const INITIAL: NewPatientState & EditPatientState = {};
 
 type Patient = Pick<PatientRow, "id" | "name" | "firstName" | "lastName" | "sex" | "dateOfBirth" | "phone" | "philhealth" | "oscaId" | "pwdId">;
 
 /** Add a patient (with the privacy consent), or edit the one passed in. */
-export function PatientDialog({ patient }: { patient?: Patient }) {
+export function PatientDialog({ patient, customFields = [] }: { patient?: Patient; /** The clinic's own fields this person may fill in; asked when adding. Edited later from the chart. */ customFields?: FieldDefinition[] }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(patient ? updatePatientAction : addPatientAction, INITIAL);
   const toast = useToast();
@@ -31,6 +33,7 @@ export function PatientDialog({ patient }: { patient?: Patient }) {
   }, [state, toast, patient]);
 
   const errors = state.fieldErrors ?? {};
+  const customErrors = (state as NewPatientState).customErrors;
   // After a failed submit the form refills from what was typed; otherwise from the patient being edited.
   const value = (key: string, fallback: string | null | undefined) => (state.values as Record<string, string> | undefined)?.[key] ?? fallback ?? "";
   const field = (key: string) => ({ "aria-invalid": (errors as Record<string, string[]>)[key] ? (true as const) : undefined, "aria-describedby": (errors as Record<string, string[]>)[key] ? `pt-${key}-error` : undefined });
@@ -87,6 +90,29 @@ export function PatientDialog({ patient }: { patient?: Patient }) {
                 <input id="pt-pwdId" name="pwdId" autoComplete="off" defaultValue={value("pwdId", patient?.pwdId)} className={CONSOLE_INPUT} />
               </FormField>
             </div>
+            {!patient && customFields.length > 0 && (
+              <>
+                {[...new Set(customFields.map((item) => item.section))].map((section) => (
+                  <fieldset key={section} className="flex flex-col gap-3 border-t border-console-line pt-3">
+                    <legend className="text-xs font-bold tracking-wide text-console-subtle uppercase">{section}</legend>
+                    {customFields.filter((item) => item.section === section).map((item) => (
+                      <div key={item.key} className="flex flex-col gap-1">
+                        <label htmlFor={`cf-${item.key}`} className="text-xs font-semibold">
+                          {item.label}{item.required && <span className="text-console-danger"> *</span>}
+                          {item.medical && <span className="ml-1.5 font-normal text-console-muted">· medical</span>}
+                        </label>
+                        <FieldInput field={item} value={null} />
+                      </div>
+                    ))}
+                  </fieldset>
+                ))}
+                {customErrors && (
+                  <ul role="alert" className="list-disc pl-5 text-xs text-console-danger">
+                    {customErrors.map((message: string) => <li key={message}>{message}</li>)}
+                  </ul>
+                )}
+              </>
+            )}
             {!patient && (
               <div className="flex flex-col gap-1">
                 <label className="flex min-h-11 items-start gap-2.5 text-xs md:min-h-0">

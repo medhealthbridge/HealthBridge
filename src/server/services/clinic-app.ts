@@ -277,6 +277,8 @@ export type NewPatient = {
   philhealth: string | null;
   oscaId: string | null;
   pwdId: string | null;
+  /** Answers to the clinic's own patient fields, already validated (see validateCustomFields). */
+  customFields?: Record<string, unknown>;
 };
 
 function isUniqueViolation(error: unknown) {
@@ -306,6 +308,7 @@ export async function createPatient(clinicId: string, actorUserId: string, input
             oscaId: input.oscaId,
             pwdId: input.pwdId,
             dataPrivacyConsentAt: new Date(),
+            customFields: input.customFields ?? {},
           })
           .returning({ id: patients.id, mrn: patients.medicalRecordNumber });
         await tx.insert(auditLogs).values({

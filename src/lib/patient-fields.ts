@@ -181,3 +181,30 @@ export const FIELD_SUGGESTIONS: Record<string, Suggestion[]> = {
 export function suggestionsFor(specialty: string): Suggestion[] {
   return FIELD_SUGGESTIONS[specialty] ?? general;
 }
+
+/**
+ * Checks a patient's answers against the fields on offer: each value must fit its
+ * type, and required fields must be filled. Returns every answer (null when empty,
+ * so a caller can clear a value) or the messages to show. Shared by the add form,
+ * the chart edit and the CSV import so all three apply the same rules.
+ */
+export function validateCustomFields(
+  fields: Pick<FieldDefinition, "key" | "type" | "options" | "label" | "required">[],
+  raw: Record<string, unknown>,
+): { values: Record<string, unknown>; errors: string[] } {
+  const values: Record<string, unknown> = {};
+  const errors: string[] = [];
+  for (const field of fields) {
+    const result = normalizeFieldValue(field, raw[field.key]);
+    if ("error" in result) errors.push(result.error);
+    else if (field.required && result.value === null) errors.push(`${field.label} is required.`);
+    else values[field.key] = result.value;
+  }
+  return { values, errors };
+}
+
+/** Matches a CSV header to a field by its label or key, ignoring case and spacing. */
+export function matchFieldByHeader<T extends Pick<FieldDefinition, "key" | "label">>(fields: T[], header: string): T | undefined {
+  const wanted = header.trim().toLowerCase().replace(/\s+/g, " ");
+  return fields.find((field) => field.label.toLowerCase() === wanted || field.key === wanted.replace(/ /g, "_"));
+}

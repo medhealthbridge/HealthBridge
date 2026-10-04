@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { displayFieldValue, fieldDefinitionInputSchema, fieldKey, incompatibleValues, normalizeFieldValue, suggestionsFor } from "./patient-fields";
+import { displayFieldValue, fieldDefinitionInputSchema, fieldKey, incompatibleValues, matchFieldByHeader, normalizeFieldValue, suggestionsFor, validateCustomFields } from "./patient-fields";
 
 const select = { type: "select" as const, options: ["A+", "O+"], label: "Blood type" };
 
@@ -33,5 +33,21 @@ describe("patient fields", () => {
   it("suggests by clinic type, falling back to general", () => {
     expect(suggestionsFor("dental").some((s) => s.label === "Medical alerts")).toBe(true);
     expect(suggestionsFor("unknown").some((s) => s.label === "Blood type")).toBe(true);
+  });
+
+  it("validates a patient's answers together, enforcing required fields", () => {
+    const fields = [
+      { key: "age_group", label: "Age group", type: "select" as const, options: ["Child", "Adult"], required: true },
+      { key: "notes", label: "Notes", type: "text" as const, options: [], required: false },
+    ];
+    expect(validateCustomFields(fields, { age_group: "Adult", notes: "" })).toEqual({ values: { age_group: "Adult", notes: null }, errors: [] });
+    expect(validateCustomFields(fields, { age_group: "" }).errors).toEqual(["Age group is required."]);
+    expect(validateCustomFields(fields, { age_group: "Senior" }).errors[0]).toContain("Age group");
+  });
+  it("matches a column header to a field by label or key", () => {
+    const fields = [{ key: "blood_type", label: "Blood type" }];
+    expect(matchFieldByHeader(fields, "  BLOOD  type ")?.key).toBe("blood_type");
+    expect(matchFieldByHeader(fields, "blood_type")?.key).toBe("blood_type");
+    expect(matchFieldByHeader(fields, "bloodtype")).toBeUndefined();
   });
 });

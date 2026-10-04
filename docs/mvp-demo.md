@@ -54,7 +54,7 @@ Staff invites and roles · services & prices · patients (add, edit, archive, re
 **Product gaps**
 6. Console **Modules** and **Feedback** pages, and company admin **Overview, Billing, Support, Audit, Feedback, Modules**, still show sample data.
 7. **SMS / Viber reminders** (needs a provider; email only today).
-8. Add-patient form and CSV import don't read the clinic's custom fields yet.
+8. ~~Add-patient form and CSV import don't read the clinic's custom fields~~ — done: the add form asks them (role-filtered, required enforced) and the import fills them from columns named like the fields.
 9. Practitioners can't see invoices or edit contact details for their own patients.
 10. The AI assistant doesn't see custom fields and has no tools for the patient portal.
 11. No automated browser tests (only unit tests).

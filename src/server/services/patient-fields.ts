@@ -2,7 +2,7 @@ import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { withTenant } from "@/src/server/db/client";
 import { auditLogs, clinics, clinicStaff, patientFieldDefinitions, patients, user } from "@/src/server/db/schema";
 import {
-  fieldKey, incompatibleValues, MAX_ACTIVE_FIELDS, normalizeFieldValue, suggestionsFor,
+  fieldKey, incompatibleValues, MAX_ACTIVE_FIELDS, suggestionsFor, validateCustomFields,
   type FieldDefinition, type FieldDefinitionInput, type FieldType,
 } from "@/src/lib/patient-fields";
 import { NotFoundError, type StaffClinic } from "./clinic-app";
@@ -193,14 +193,7 @@ export async function getPatientCustomFields(clinicId: string, patientId: string
  */
 export async function savePatientCustomFields(clinic: Actor, actorUserId: string, patientId: string, raw: Record<string, unknown>) {
   const editable = visibleTo(clinic.role, (await listFieldDefinitions(clinic.id)).filter((field) => !field.archived));
-  const errors: string[] = [];
-  const next: Record<string, unknown> = {};
-  for (const field of editable) {
-    const result = normalizeFieldValue(field, raw[field.key]);
-    if ("error" in result) errors.push(result.error);
-    else if (field.required && result.value === null) errors.push(`${field.label} is required.`);
-    else next[field.key] = result.value;
-  }
+  const { values: next, errors } = validateCustomFields(editable, raw);
   if (errors.length) throw new FieldValuesError(errors);
 
   await withTenant(clinic.id, async (tx) => {
