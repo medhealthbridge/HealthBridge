@@ -45,7 +45,7 @@ Staff invites and roles · services & prices · patients (add, edit, archive, re
 ## 4. What is still missing (in the order I would do it)
 
 **Before any real clinic uses it**
-1. **Database security.** The app connects as `neondb_owner`, which bypasses row-level security, so the tenant policies are not enforced at runtime; only the application filters protect tenants. Fix: a non-bypass app role. *Needs your OK (changes the live database).*
+1. **Database security.** Done on the database side (policies hardened, restricted `clinix_app` role created and tested). **Still to do: the cutover** — set its password and point `DATABASE_URL` at it in Vercel (5 minutes, see `docs/db-app-role.md`). Until then the app still connects as the owner and the policies are not enforced.
 2. **Live verification** — never exercised against real services: invite and reminder emails (Resend), PayMongo/Xendit checkout, domain purchase through Vercel, the AI keys. Run the checklist in section 5.
 3. **Subscription billing after month 1** — renewals, failed-payment handling, the past-due lockout.
 4. **Legal pages and consent copy** — Terms, Privacy Policy, data-processing notice; NPC/DPO details (RA 10173).

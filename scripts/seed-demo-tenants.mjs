@@ -11,6 +11,10 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import pg from "pg";
 
+// Seeding writes across tenants (and creates users), so it connects as the database owner:
+// DATABASE_ADMIN_URL when set, otherwise DATABASE_URL (the app's own, restricted role cannot do this).
+const ADMIN_URL = process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL;
+
 const DAY = 24 * 60 * 60 * 1000;
 const at = (days) => new Date(Date.now() + days * DAY);
 
@@ -27,11 +31,11 @@ const DEMO = [
 const SLOTS = { tier_1: 1, tier_2: 2, tier_3: 3, tier_4: 4, enterprise: 99 };
 const email = (slug) => `${slug}@seed.invalid`;
 
-if (!process.env.DATABASE_URL) {
+if (!ADMIN_URL) {
   console.error("DATABASE_URL is not set.");
   process.exit(1);
 }
-const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+const client = new pg.Client({ connectionString: ADMIN_URL });
 await client.connect();
 try {
   await client.query("begin");

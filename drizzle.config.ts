@@ -8,6 +8,7 @@ export default defineConfig({
   out: "./src/server/db/migrations",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    // Migrations change the schema, which the app's restricted role must not do: use the owner connection.
+    url: (process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL)!,
   },
 });

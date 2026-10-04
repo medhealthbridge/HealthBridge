@@ -9,6 +9,10 @@
 // touched. Refuses to create a second super admin.
 import { randomBytes, randomInt } from "node:crypto";
 import pg from "pg";
+
+// Seeding writes across tenants (and creates users), so it connects as the database owner:
+// DATABASE_ADMIN_URL when set, otherwise DATABASE_URL (the app's own, restricted role cannot do this).
+const ADMIN_URL = process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL;
 import { hashPassword } from "better-auth/crypto";
 
 const EMAIL = (process.env.SUPER_ADMIN_EMAIL ?? "med.healthbridge@gmail.com").trim().toLowerCase();
@@ -24,13 +28,13 @@ function generatePassword() {
   return chars.sort(() => randomInt(3) - 1).join("");
 }
 
-if (!process.env.DATABASE_URL) {
+if (!ADMIN_URL) {
   console.error("DATABASE_URL is not set.");
   process.exit(1);
 }
 
 const newId = () => randomBytes(16).toString("hex");
-const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+const client = new pg.Client({ connectionString: ADMIN_URL });
 await client.connect();
 try {
   await client.query("begin");

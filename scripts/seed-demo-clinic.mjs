@@ -15,6 +15,10 @@
 // passwords are never touched.
 import { randomBytes, randomInt, randomUUID } from "node:crypto";
 import pg from "pg";
+
+// Seeding writes across tenants (and creates users), so it connects as the database owner:
+// DATABASE_ADMIN_URL when set, otherwise DATABASE_URL (the app's own, restricted role cannot do this).
+const ADMIN_URL = process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL;
 import { hashPassword } from "better-auth/crypto";
 
 const SLUG = "demo";
@@ -25,7 +29,7 @@ const DRY = process.argv.includes("--dry-run");
 const REMOVE = process.argv.includes("--remove");
 const EMIT = process.argv.includes("--emit-sql") ? process.argv[process.argv.indexOf("--emit-sql") + 1] : null;
 
-if (!EMIT && !process.env.DATABASE_URL) {
+if (!EMIT && !ADMIN_URL) {
   console.error("DATABASE_URL is not set.");
   process.exit(1);
 }
@@ -104,7 +108,7 @@ const INVENTORY = [
   { name: "Fluoride varnish", sku: "FLUOR-V", unit: "tube", reorder: 6, lots: [[5, -1], [9, 6]] }, // one lot already expired
 ];
 
-const pgClient = new pg.Client({ connectionString: process.env.DATABASE_URL });
+const pgClient = new pg.Client({ connectionString: ADMIN_URL });
 const emitted = [];
 // In emit mode statements are collected with their values written in as escaped literals, not run.
 const literal = (value) =>
