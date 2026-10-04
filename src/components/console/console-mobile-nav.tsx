@@ -73,8 +73,9 @@ export function ConsoleMobileNav({ nav, user, theme, onToggleTheme, slot }: Cons
       </nav>
 
       <ConsoleDialog open={moreOpen} onClose={() => setMoreOpen(false)} label="More" placement="bottom">
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 pb-2">
-          <div className="flex items-center gap-2.5">
+        <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-3 pb-6">
+          <div className="flex items-center gap-2.5 px-1 pt-1">
             <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-console-info text-xs font-bold text-console-on-accent">
               {user.initials}
             </span>
@@ -85,8 +86,8 @@ export function ConsoleMobileNav({ nav, user, theme, onToggleTheme, slot }: Cons
             const rest = group.items.filter((item) => !primary.includes(item));
             if (rest.length === 0) return null;
             return (
-              <div key={group.label ?? index} className="flex flex-col gap-1">
-                {group.label && <p className="px-1 text-[10px] tracking-[0.12em] text-console-subtle uppercase">{group.label}</p>}
+              <div key={group.label ?? index} className="flex flex-col gap-0.5">
+                {group.label && <p className="px-1 pt-1.5 text-[10px] tracking-[0.12em] text-console-subtle uppercase">{group.label}</p>}
                 {rest.map((item) => (
                   <Link
                     key={item.href}
@@ -105,6 +106,9 @@ export function ConsoleMobileNav({ nav, user, theme, onToggleTheme, slot }: Cons
               </div>
             );
           })}
+        </div>
+        {/* Fades the list into the footer so it reads as scrollable. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-console-panel to-transparent" />
         </div>
         {/* Outside the scrolling list so theme and log out never slide out of reach. */}
         <div className="flex shrink-0 gap-2 border-t border-console-line bg-console-panel p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">

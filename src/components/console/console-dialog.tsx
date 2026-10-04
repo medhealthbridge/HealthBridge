@@ -8,7 +8,7 @@ const PLACEMENT = {
     "fixed inset-y-0 right-0 left-auto m-0 h-dvh open:flex max-h-none w-full flex-col border-l border-console-line motion-safe:animate-console-slide-in md:w-[420px] md:max-w-[94vw]",
   /** Bottom sheet, for phones. */
   bottom:
-    "fixed inset-x-0 top-auto bottom-0 m-0 max-h-[85dvh] w-full max-w-none open:flex flex-col rounded-t-2xl border-t border-console-line",
+    "fixed inset-x-0 top-auto bottom-0 m-0 max-h-[92dvh] w-full max-w-none open:flex flex-col rounded-t-2xl border-t border-console-line",
   /** Centered modal. */
   center: "m-auto w-[420px] max-w-[92vw] rounded-xl border border-console-line",
   /** Command palette position. */
