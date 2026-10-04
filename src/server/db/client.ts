@@ -3,7 +3,9 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Keep a few warm connections per instance: a new one costs a TLS handshake
+// plus several round trips, which dominates a page that only runs a few queries.
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 8, keepAlive: true, idleTimeoutMillis: 60_000, connectionTimeoutMillis: 10_000 });
 
 export const db = drizzle(pool, { schema });
 

@@ -133,6 +133,10 @@ export const auth = betterAuth({
     advanced: { crossSubDomainCookies: { enabled: true, domain: CLINIC_DOMAIN_SUFFIX } },
     trustedOrigins: [`https://*${CLINIC_DOMAIN_SUFFIX}`],
   }),
+  // Without this every page load re-reads the session from the database. The
+  // signed cookie answers for 5 minutes; staff roles are still read from the
+  // database on each request, so removing someone's access takes effect at once.
+  session: { cookieCache: { enabled: true, maxAge: 5 * 60 } },
   hooks: { before: rateLimitAuthEndpoints },
   // Lets Server Actions that call auth.api.* set the session cookie.
   // One-time tokens carry a session from the product host to a clinic's own

@@ -64,7 +64,7 @@ export default async function ClinixAdminLayout({ children }: { children: React.
   }
 
   // The assistant is offered only to an account the company admin has granted it to.
-  const assistantGranted = await aiGrantedFor(workspace.clinics[0].accountId);
+  const [assistantGranted, initialTheme] = await Promise.all([aiGrantedFor(workspace.clinics[0].accountId), readConsoleTheme()]);
   const nav = NAV.map((group) => ({ ...group, items: group.items.filter((item) => assistantGranted || item.href !== ASSISTANT_HREF) }));
 
   const branches: ConsoleBranch[] = workspace.clinics.map((clinic) => ({
@@ -77,7 +77,7 @@ export default async function ClinixAdminLayout({ children }: { children: React.
   return (
     <BranchProvider branches={branches} initialKey={slug ?? customClinic?.subdomain ?? branches[0].key}>
       <ConsoleShell
-        initialTheme={await readConsoleTheme()}
+        initialTheme={initialTheme}
         brand={{ initial: initialsOf(workspace.companyName).slice(0, 1), name: workspace.companyName, kicker: "Owner console" }}
         user={{ initials: initialsOf(user.name), name: user.name }}
         nav={nav}
