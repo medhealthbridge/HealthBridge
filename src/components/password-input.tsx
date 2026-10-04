@@ -13,8 +13,8 @@ export function PasswordInput({ className = "", ...props }: Omit<ComponentProps<
   const [visible, setVisible] = useState(false);
   const Icon = visible ? EyeOff : Eye;
   return (
-    <div className="relative w-full min-w-0">
-      <input {...props} type={visible ? "text" : "password"} className={`${className} pr-11`} />
+    <div className="relative w-full min-w-0 flex-1">
+      <input {...props} type={visible ? "text" : "password"} className={`${className} block w-full pr-11`} />
       <button
         type="button"
         onClick={() => setVisible((current) => !current)}
