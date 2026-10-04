@@ -5,6 +5,7 @@ import { ConsoleButton } from "@/src/components/console/console-button";
 import { CONSOLE_INPUT } from "@/src/components/console/console-input";
 import { FormField } from "@/src/components/console/form-field";
 import { Panel, PanelHeader } from "@/src/components/console/panel";
+import { PasswordInput } from "@/src/components/password-input";
 import { Pill } from "@/src/components/console/pill";
 import { removeKeyAction, saveKeyAction, type SaveKeyState } from "@/src/server/actions/ai-settings";
 import type { SecretKey } from "@/src/server/db/schema";
@@ -39,10 +40,9 @@ export function ProviderKeyCard({ name, title, help, status }: { name: SecretKey
           <input type="hidden" name="name" value={name} />
           <div className="min-w-0 flex-1">
             <FormField id={inputId} label={status.source === "admin" ? "Replace key" : "Paste key"} error={error}>
-              <input
+              <PasswordInput
                 id={inputId}
                 name="key"
-                type="password"
                 autoComplete="off"
                 spellCheck={false}
                 required

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowUp } from "lucide-react";
 import { CONSOLE_INPUT } from "@/src/components/console/console-input";
 import { PANEL } from "@/src/components/console/panel";
+import { PasswordInput } from "@/src/components/password-input";
 
 type Proposal = { id: string; summary: string; stepUp?: "none" | "unlock" | "password+typed"; phrase?: string };
 type Turn = { role: "user" | "assistant"; content: string; by?: string; proposals?: Proposal[] };
@@ -188,7 +189,7 @@ function ProposalCard({
             <>
               <label className="flex flex-col gap-1 text-xs font-semibold">
                 Your password
-                <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className={`${CONSOLE_INPUT} font-normal`} />
+                <PasswordInput autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className={`${CONSOLE_INPUT} font-normal`} />
               </label>
               {askTyped && (
                 <label className="flex flex-col gap-1 text-xs font-semibold">

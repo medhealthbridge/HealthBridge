@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { ConsoleButton } from "@/src/components/console/console-button";
 import { CONSOLE_INPUT } from "@/src/components/console/console-input";
 import { FormField } from "@/src/components/console/form-field";
+import { PasswordInput } from "@/src/components/password-input";
 import { adminLoginAction, type AdminLoginState } from "@/src/server/actions/platform-staff";
 
 export function AdminLoginForm() {
@@ -16,7 +17,7 @@ export function AdminLoginForm() {
         <input id="admin-email" name="email" type="email" autoComplete="username" required defaultValue={state.values?.email ?? ""} aria-invalid={errors.email ? true : undefined} aria-describedby={errors.email ? "admin-email-error" : undefined} className={CONSOLE_INPUT} />
       </FormField>
       <FormField id="admin-password" label="Password" error={errors.password?.[0]}>
-        <input id="admin-password" name="password" type="password" autoComplete="current-password" required aria-invalid={errors.password ? true : undefined} aria-describedby={errors.password ? "admin-password-error" : undefined} className={CONSOLE_INPUT} />
+        <PasswordInput id="admin-password" name="password" autoComplete="current-password" required aria-invalid={errors.password ? true : undefined} aria-describedby={errors.password ? "admin-password-error" : undefined} className={CONSOLE_INPUT} />
       </FormField>
       {state.message && <p role="alert" className="text-xs text-console-danger">{state.message}</p>}
       <ConsoleButton type="submit" variant="primary" disabled={pending} className="w-full">

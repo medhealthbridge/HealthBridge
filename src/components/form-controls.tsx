@@ -1,4 +1,5 @@
 import { useId, type ComponentProps, type ReactNode } from "react";
+import { PasswordInput } from "./password-input";
 
 const CONTROL =
   "min-h-11 w-full rounded-[10px] border border-slate-300 bg-white px-3.5 text-base text-slate-900 placeholder:text-slate-500 hover:border-slate-400 focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand aria-invalid:border-red-600 sm:text-sm";
@@ -38,15 +39,14 @@ type TextFieldProps = ComponentProps<"input"> &
 export function TextField({ label, hideLabel, error, suffix, className = "", ...props }: TextFieldProps) {
   return (
     <FieldShell label={label} hideLabel={hideLabel} error={error} suffix={suffix}>
-      {({ id, describedBy }) => (
-        <input
-          id={id}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={describedBy}
-          className={`${CONTROL} ${className}`}
-          {...props}
-        />
-      )}
+      {({ id, describedBy }) => {
+        const common = { id, "aria-invalid": error ? (true as const) : undefined, "aria-describedby": describedBy, className: `${CONTROL} ${className}` };
+        // Every password field gets the show/hide eye.
+        if (props.type === "password") {
+          return <PasswordInput {...common} {...props} />;
+        }
+        return <input {...common} {...props} />;
+      }}
     </FieldShell>
   );
 }

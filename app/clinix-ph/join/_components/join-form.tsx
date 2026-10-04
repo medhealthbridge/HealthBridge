@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { Button } from "@/src/components/button";
+import { PasswordInput } from "@/src/components/password-input";
 import { acceptStaffInviteAction, type JoinState } from "@/src/server/actions/clinic-staff";
 
 const INPUT = "min-h-11 rounded-[10px] border border-slate-300 bg-white px-3 text-base focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-brand";
@@ -23,7 +24,7 @@ export function JoinForm({ token, hasAccount }: { token: string; hasAccount: boo
       )}
       <div className="flex flex-col gap-1">
         <label htmlFor="join-password" className="text-sm font-semibold">{hasAccount ? "Your password" : "Choose a password"}</label>
-        <input id="join-password" name="password" type="password" autoComplete={hasAccount ? "current-password" : "new-password"} required minLength={8} className={INPUT} aria-invalid={errors.password ? true : undefined} aria-describedby={errors.password ? "join-password-error" : undefined} />
+        <PasswordInput id="join-password" name="password" autoComplete={hasAccount ? "current-password" : "new-password"} required minLength={8} className={INPUT} aria-invalid={errors.password ? true : undefined} aria-describedby={errors.password ? "join-password-error" : undefined} />
         {errors.password && <p id="join-password-error" role="alert" className="text-xs text-red-700">{errors.password[0]}</p>}
       </div>
       {state.message && <p role="alert" className="text-sm text-red-700">{state.message}</p>}

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { Button } from "@/src/components/button";
+import { PasswordInput } from "@/src/components/password-input";
 import { acceptInviteAction, type AcceptInviteState } from "@/src/server/actions/platform-staff";
 
 const INPUT =
@@ -29,10 +30,9 @@ export function AcceptInviteForm({ token, email, hasAccount }: { token: string; 
 
       <div className="flex flex-col gap-1">
         <label htmlFor="invite-password" className="text-sm font-semibold">{hasAccount ? "Your password" : "Choose a password"}</label>
-        <input
+        <PasswordInput
           id="invite-password"
           name="password"
-          type="password"
           autoComplete={hasAccount ? "current-password" : "new-password"}
           required
           minLength={8}
