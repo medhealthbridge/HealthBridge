@@ -144,7 +144,7 @@ export async function getPortalRecords(userId: string): Promise<PortalRecord[]> 
           tx
             .select({ invoiceNumber: invoices.invoiceNumber, issuedAt: invoices.issuedAt, totalCents: invoices.totalCents, status: invoices.status })
             .from(invoices)
-            .where(and(eq(invoices.clinicId, patient.clinicId), eq(invoices.patientId, patient.id), inArray(invoices.status, ["paid", "void"])))
+            .where(and(eq(invoices.clinicId, patient.clinicId), eq(invoices.patientId, patient.id), inArray(invoices.status, ["paid", "open", "void"])))
             .orderBy(desc(invoices.createdAt))
             .limit(50),
         ]);

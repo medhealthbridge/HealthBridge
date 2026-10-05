@@ -11,3 +11,4 @@ export * from "./rate-limits";
 export * from "./agent";
 export * from "./services";
 export * from "./reminders";
+export * from "./dental";

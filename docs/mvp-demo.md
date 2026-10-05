@@ -29,6 +29,8 @@ What it loads: 8 dental services, 12 patients (two seniors with OSCA IDs, one Ph
 3. **Patients → Ben Cruz (senior).** Chart, custom fields ("More details"), medical alerts; invite to portal.
 4. **Appointments.** Book for tomorrow; reschedule; show the practitioner-busy refusal.
 5. **Billing.** New checkout for Ben Cruz with the senior discount: VAT backed out first, then 20%. Open the receipt (OR-0000xx). Void needs a reason and is owner-only.
+   Then try pay-later: set "Paying now" lower than the total (or ₱0), split the rest into installments, and record the next payment from the receipt (PR- numbers). Billing → On account lists who owes. Discounts beyond senior/PWD: owner creates saved ones in Settings → Discounts, or types a one-off with its own description at checkout.
+   **Dental flow.** Patients → open a chart: *Tooth chart* (owner and dentist only) has a 3D model (drag, pinch, tap a tooth) and a flat tab; record findings and work per tooth and surface, void with a reason. *Treatment plans*: create a plan with phases, add items from the price list, mark shown/agreed (the front desk can do this), mark items done (charts the work on the tooth), then Bill from plan at checkout. *Recalls*: optional "remind them to come back" at checkout, or add one manually; a reminder list, never a booking.
 6. **Inventory.** Record use of Lidocaine; see "Composite resin" low and "Fluoride varnish" with an expired lot.
 7. **Claims.** File a Maxicare claim; move the denied one to resubmitted.
 8. **Settings → Patient fields.** Built-ins read-only; add a field from the dental suggestions; retire one and show the answers are kept.
@@ -40,7 +42,7 @@ Optional, needs keys: switch on the AI assistant (admin → AI settings) and ask
 
 ## 3. What is real
 
-Staff invites and roles · services & prices · patients (add, edit, archive, restore) · configurable patient fields · appointments and queue · clinical notes · checkout, receipts, payments, void · inventory · claims · activity log · overview · patient portal (read-only) · email reminders (daily cron + send now) · CSV export and patient import · tenants, company staff, AI settings in the company admin · the three-layer assistant (rules → Gemini → Claude, confirm-first writes).
+Staff invites and roles · services & prices · patients (add, edit, archive, restore) · configurable patient fields · appointments and queue · clinical notes · checkout (discounts, pay later, installments), receipts, payments, void · treatment plans · 3D tooth chart · recalls · inventory · claims · activity log · overview · patient portal (read-only) · email reminders (daily cron + send now) · CSV export and patient import · tenants, company staff, AI settings in the company admin · the three-layer assistant (rules → Gemini → Claude, confirm-first writes).
 
 ## 4. What is still missing (in the order I would do it)
 

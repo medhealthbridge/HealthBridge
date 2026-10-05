@@ -8,12 +8,21 @@ describe("checkoutSchema", () => {
   it("accepts a plain cash sale", () => expect(checkoutSchema.safeParse(base).success).toBe(true));
   it("needs a service line", () => expect(checkoutSchema.safeParse({ ...base, lines: [] }).success).toBe(false));
   it("needs an ID number for a senior/PWD discount", () => {
-    expect(checkoutSchema.safeParse({ ...base, discountType: "senior_citizen" }).success).toBe(false);
-    expect(checkoutSchema.safeParse({ ...base, discountType: "pwd", discountIdNumber: "PWD-12345" }).success).toBe(true);
+    expect(checkoutSchema.safeParse({ ...base, discount: { type: "senior_citizen" } }).success).toBe(false);
+    expect(checkoutSchema.safeParse({ ...base, discount: { type: "pwd", idNumber: "PWD-12345" } }).success).toBe(true);
   });
   it("needs a reference for GCash, Maya and card but not cash", () => {
     expect(checkoutSchema.safeParse({ ...base, method: "gcash" }).success).toBe(false);
     expect(checkoutSchema.safeParse({ ...base, method: "gcash", referenceNumber: "1234567" }).success).toBe(true);
+  });
+  it("lets a bill be part-paid, with the rest on account", () => expect(checkoutSchema.safeParse({ ...base, payNow: "500" }).success).toBe(true));
+  it("needs a due date when splitting into installments", () => {
+    expect(checkoutSchema.safeParse({ ...base, payNow: "0", installmentCount: 3 }).success).toBe(false);
+    expect(checkoutSchema.safeParse({ ...base, payNow: "0", installmentCount: 3, firstDueOn: "2026-11-01" }).success).toBe(true);
+  });
+  it("needs a description for a custom discount", () => {
+    expect(checkoutSchema.safeParse({ ...base, discount: { type: "custom", customKind: "percent", customValue: "10" } }).success).toBe(false);
+    expect(checkoutSchema.safeParse({ ...base, discount: { type: "custom", customKind: "percent", customValue: "10", label: "Employee discount" } }).success).toBe(true);
   });
   it("rejects unknown payment methods", () => expect(checkoutSchema.safeParse({ ...base, method: "crypto" }).success).toBe(false));
 });

@@ -11,6 +11,11 @@ const ENTITY_LABELS: Record<string, string> = {
   service: "service",
   inventory_item: "inventory item",
   claim: "claim",
+  treatment_plan: "treatment plan",
+  dental_chart: "tooth chart entry",
+  discount_type: "discount",
+  recall: "recall",
+  patient_field: "patient field",
   staff: "staff member",
   staff_invite: "staff invite",
   account: "account",
@@ -26,6 +31,8 @@ export const ACTIVITY_FILTERS = [
   { key: "service", label: "Services" },
   { key: "inventory_item", label: "Inventory" },
   { key: "claim", label: "Claims" },
+  { key: "treatment_plan", label: "Plans" },
+  { key: "dental_chart", label: "Tooth chart" },
   { key: "staff", label: "Staff" },
 ] as const;
 

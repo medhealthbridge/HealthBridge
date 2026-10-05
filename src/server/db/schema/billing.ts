@@ -1,4 +1,5 @@
-import { pgTable, uuid, text, integer, timestamp, index, uniqueIndex, unique, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, integer, boolean, date, timestamp, index, uniqueIndex, unique, foreignKey } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { clinics } from "./tenancy";
 import { clinicStaff } from "./staff";
 import { patients } from "./patients";
@@ -27,6 +28,12 @@ export const invoices = pgTable(
     totalCents: integer("total_cents").notNull(),
     status: text("status").notNull().default("draft"), // 'draft' | 'paid' | 'void'
     issuedAt: timestamp("issued_at", { withTimezone: true }),
+    // What the receipt prints for the discount ("Senior citizen (20%)", "Employee discount"), and the rule behind it.
+    discountLabel: text("discount_label"),
+    discountKind: text("discount_kind"), // 'statutory' | 'percent' | 'fixed' | null
+    discountValue: integer("discount_value"), // percent (1-100) or fixed centavos; null for statutory
+    // Sum of this invoice's payments, kept in step inside the payment transaction. Balance = total - paid.
+    paidCents: integer("paid_cents").notNull().default(0),
     voidReason: text("void_reason"),
     voidedAt: timestamp("voided_at", { withTimezone: true }),
     createdByStaffId: uuid("created_by_staff_id"),
@@ -64,6 +71,8 @@ export const invoiceLineItems = pgTable(
     invoiceId: uuid("invoice_id").notNull(),
     description: text("description").notNull(),
     serviceCode: text("service_code"),
+    tooth: text("tooth"), // FDI number when the line is for a tooth
+    planItemId: uuid("plan_item_id"),
     quantity: integer("quantity").notNull().default(1),
     unitPriceCents: integer("unit_price_cents").notNull(),
     lineTotalCents: integer("line_total_cents").notNull(),
@@ -85,6 +94,7 @@ export const payments = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
     invoiceId: uuid("invoice_id").notNull(),
+    receiptNumber: text("receipt_number"), // PR-000001: one per payment, in the order taken
     method: text("method").notNull(), // 'cash' | 'gcash' | 'maya' | 'card' | 'hmo'
     amountCents: integer("amount_cents").notNull(),
     referenceNumber: text("reference_number"),
@@ -134,5 +144,50 @@ export const hmoClaims = pgTable(
       columns: [table.clinicId, table.invoiceId],
       foreignColumns: [invoices.clinicId, invoices.id],
     }),
+  }),
+);
+
+/** Equal parts of an invoice's balance, due monthly (braces, dentures, long treatments). Which are paid is worked out from `invoices.paid_cents`. */
+export const invoiceInstallments = pgTable(
+  "invoice_installments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
+    invoiceId: uuid("invoice_id").notNull(),
+    sequence: integer("sequence").notNull(),
+    dueOn: date("due_on").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+  },
+  (table) => ({
+    clinicInvoiceIdx: index("invoice_installments_clinic_invoice_idx").on(table.clinicId, table.invoiceId),
+    clinicDueIdx: index("invoice_installments_clinic_due_idx").on(table.clinicId, table.dueOn),
+    invoiceInstallmentsInvoiceFk: foreignKey({
+      name: "invoice_installments_invoice_fk",
+      columns: [table.clinicId, table.invoiceId],
+      foreignColumns: [invoices.clinicId, invoices.id],
+    }),
+  }),
+);
+
+/**
+ * A discount the owner has set up, with its own description: "Employee 10%", "Promo ₱500 off".
+ * Senior citizen and PWD are not rows: they are built in, because the law (RA 9994, RA 10754)
+ * decides how they work (VAT-exempt first, then 20%).
+ */
+export const discountTypes = pgTable(
+  "discount_types",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
+    name: text("name").notNull(),
+    description: text("description"),
+    kind: text("kind").notNull(), // 'percent' | 'fixed'
+    value: integer("value").notNull(), // percent 1-100, or centavos
+    requiresId: boolean("requires_id").notNull().default(false),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    clinicNameIdx: uniqueIndex("discount_types_clinic_name_idx").on(table.clinicId, sql`lower(${table.name})`).where(sql`archived_at is null`),
   }),
 );

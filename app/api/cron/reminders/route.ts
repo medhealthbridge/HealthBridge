@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { runDailyRecalls } from "@/src/server/services/recalls";
 import { runDailyReminders } from "@/src/server/services/reminders";
 
 export const maxDuration = 300;
@@ -10,5 +11,7 @@ export async function GET(request: Request) {
   const given = Buffer.from(request.headers.get("authorization") ?? "");
   const expected = Buffer.from(`Bearer ${secret}`);
   if (given.length !== expected.length || !timingSafeEqual(given, expected)) return Response.json({ error: "Not found." }, { status: 404 });
-  return Response.json(await runDailyReminders());
+  const appointments = await runDailyReminders();
+  const recalls = await runDailyRecalls();
+  return Response.json({ appointments, recalls });
 }

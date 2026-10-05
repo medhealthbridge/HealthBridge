@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 import { withTenant } from "@/src/server/db/client";
 import { appointments, invoices, patients, payments } from "@/src/server/db/schema";
 import type { Kpi, MeterRow, Stat, Tone } from "@/src/types/console";
@@ -42,15 +42,17 @@ export async function getOverview(clinic: Pick<StaffClinic, "id" | "timezone" | 
     listTodayAppointments(clinic),
     listInventory(clinic.id, today),
     withTenant(clinic.id, async (tx) => {
+      // Money actually collected: each payment on a receipt that isn't void. A bill put on account counts when it is paid.
       const paid = await tx
-        .select({ id: invoices.id, totalCents: invoices.totalCents, issuedAt: invoices.issuedAt })
-        .from(invoices)
-        .where(and(eq(invoices.clinicId, clinic.id), eq(invoices.status, "paid"), gte(invoices.issuedAt, since)));
+        .select({ id: payments.id, totalCents: payments.amountCents, issuedAt: payments.paidAt })
+        .from(payments)
+        .innerJoin(invoices, and(eq(invoices.clinicId, payments.clinicId), eq(invoices.id, payments.invoiceId)))
+        .where(and(eq(payments.clinicId, clinic.id), ne(invoices.status, "void"), gte(payments.paidAt, since)));
       const methods = await tx
         .select({ method: payments.method, total: sql<number>`sum(${payments.amountCents})::int` })
         .from(payments)
         .innerJoin(invoices, and(eq(invoices.clinicId, payments.clinicId), eq(invoices.id, payments.invoiceId)))
-        .where(and(eq(payments.clinicId, clinic.id), eq(invoices.status, "paid"), gte(invoices.issuedAt, since)))
+        .where(and(eq(payments.clinicId, clinic.id), ne(invoices.status, "void"), gte(payments.paidAt, since)))
         .groupBy(payments.method);
       const attended = await tx
         .select({ status: appointments.status, count: sql<number>`count(*)::int` })
@@ -104,7 +106,7 @@ export async function getOverview(clinic: Pick<StaffClinic, "id" | "timezone" | 
       { label: "Revenue today", value: formatPeso(revenueToday / 100), delta: changeLabel(revenueToday, revenueLastWeek), deltaTone: revenueToday >= revenueLastWeek ? "accent" : "warn", sub: `vs ${formatPeso(revenueLastWeek / 100)} last week`, sparkTone: "accent", spark: sparkHeights(series) },
       { label: "Queue / booked", value: String(queue.length), delta: `${inRoom} in room`, deltaTone: "info", sub: `${waiting} waiting · ${booked} booked today`, sparkTone: "info", spark: sparkHeights([inRoom, waiting, booked, queue.length]) },
       { label: "Stock alerts", value: String(attention.length), delta: critical > 0 ? `${critical} out` : "OK", deltaTone: critical > 0 ? "danger" : "accent", sub: attention.length ? "Low, out or expiring items" : "Nothing needs reordering", sparkTone: "warn", spark: sparkHeights([attention.length]) },
-      { label: "Receipts today", value: String(receiptsToday), delta: `${data.paid.length} in 30 days`, deltaTone: "neutral", sub: "Paid, not voided", sparkTone: "neutral", spark: sparkHeights(days.map((day) => data.paid.filter((invoice) => invoice.issuedAt && clinicDateString(clinic.timezone, invoice.issuedAt) === day).length)) },
+      { label: "Payments today", value: String(receiptsToday), delta: `${data.paid.length} in 30 days`, deltaTone: "neutral", sub: "Payments taken, not voided", sparkTone: "neutral", spark: sparkHeights(days.map((day) => data.paid.filter((invoice) => invoice.issuedAt && clinicDateString(clinic.timezone, invoice.issuedAt) === day).length)) },
     ],
     queue,
     queueSummary: [

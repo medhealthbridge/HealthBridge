@@ -25,3 +25,26 @@ describe("invoiceTotals", () => {
     expect(t.vatCents).toBe(600);
   });
 });
+
+import { invoiceTotalsFor } from "./invoice-totals";
+
+describe("invoiceTotalsFor (clinic discounts)", () => {
+  const vatable = { unitPriceCents: 11_200, quantity: 1, vatExempt: false };
+  it("takes a percent off and scales the VAT inside the price", () => {
+    const t = invoiceTotalsFor([vatable], { kind: "percent", percent: 10, label: "Employee" });
+    expect(t).toEqual({ subtotalCents: 11_200, discountCents: 1_120, vatCents: 1_080, vatExemptCents: 0, totalCents: 10_080 });
+  });
+  it("takes a fixed amount off, capped at the bill", () => {
+    expect(invoiceTotalsFor([vatable], { kind: "fixed", cents: 500, label: "Promo" }).totalCents).toBe(10_700);
+    expect(invoiceTotalsFor([vatable], { kind: "fixed", cents: 99_999, label: "Promo" }).totalCents).toBe(0);
+  });
+  it("never loses a centavo spreading a fixed discount over lines", () => {
+    const lines = [{ unitPriceCents: 3_333, quantity: 1, vatExempt: true }, { unitPriceCents: 3_333, quantity: 1, vatExempt: true }, { unitPriceCents: 3_334, quantity: 1, vatExempt: true }];
+    const t = invoiceTotalsFor(lines, { kind: "fixed", cents: 1_000, label: "x" });
+    expect(t.discountCents).toBe(1_000);
+    expect(t.totalCents).toBe(9_000);
+  });
+  it("keeps the statutory rule exactly as before", () => {
+    expect(invoiceTotalsFor([vatable], { kind: "statutory", label: "Senior" })).toMatchObject({ vatExemptCents: 1_200, discountCents: 2_000, totalCents: 8_000 });
+  });
+});

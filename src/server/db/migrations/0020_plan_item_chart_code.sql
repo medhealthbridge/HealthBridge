@@ -1,0 +1,1 @@
+ALTER TABLE "treatment_plan_items" ADD COLUMN "chart_code" text;

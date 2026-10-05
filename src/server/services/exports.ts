@@ -35,7 +35,7 @@ export async function buildExport(clinic: Pick<StaffClinic, "id" | "timezone">, 
     );
   } else if (kind === "receipts") {
     const rows = await listInvoices(clinic.id, { limit: 5000 });
-    csv = toCsv(["receipt", "date", "patient", "mrn", "paid_by", "total_php", "status"], rows.map((row) => [row.invoiceNumber, day(row.issuedAt, clinic.timezone), row.patientName, row.patientMrn, row.method, peso(row.totalCents), row.status]));
+    csv = toCsv(["receipt", "date", "patient", "mrn", "paid_by", "total_php", "paid_php", "balance_php", "status"], rows.map((row) => [row.invoiceNumber, day(row.issuedAt, clinic.timezone), row.patientName, row.patientMrn, row.method, peso(row.totalCents), peso(row.paidCents), peso(row.balanceCents), row.status]));
   } else if (kind === "inventory") {
     const rows = await listInventory(clinic.id, clinicDateString(clinic.timezone));
     csv = toCsv(["item", "sku", "unit", "in_stock", "reorder_at", "next_expiry", "expired_qty", "status"], rows.map((row) => [row.name, row.sku, row.unit, row.onHand, row.reorderThreshold, row.nextExpiry, row.expiredQty, row.status]));

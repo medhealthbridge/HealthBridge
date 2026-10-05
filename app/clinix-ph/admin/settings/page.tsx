@@ -8,6 +8,8 @@ import { getClinicDomainOrder } from "@/src/server/services/domain-orders";
 import { clinicSpecialty, listFieldDefinitions } from "@/src/server/services/patient-fields";
 import { CLINIX_ROUTES } from "@/src/lib/constants";
 import { FIELD_TYPE_LABELS, fieldKey, suggestionsFor } from "@/src/lib/patient-fields";
+import { DiscountsManager } from "@/src/components/discounts/discounts-manager";
+import { listDiscountTypes } from "@/src/server/services/discount-types";
 import { DomainStatusCard } from "./_components/domain-status-card";
 import { ClinicProfileCard } from "./_components/clinic-profile-card";
 
@@ -16,12 +18,14 @@ export const metadata: Metadata = { title: "Settings" };
 const TABS = [
   { key: "profile", label: "Clinic profile" },
   { key: "patient-fields", label: "Patient fields" },
+  { key: "discounts", label: "Discounts" },
 ] as const;
 
 const SPECIALTY_LABELS: Record<string, string> = { dental: "dental", eye: "eye", vet: "veterinary", derma: "dermatology", general: "general" };
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const tab = (await searchParams).tab === "patient-fields" ? "patient-fields" : "profile";
+  const requested = (await searchParams).tab;
+  const tab = requested === "patient-fields" || requested === "discounts" ? requested : "profile";
   const base = `${CLINIX_ROUTES.admin}/settings`;
 
   const tabs = (
@@ -47,6 +51,17 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <PageHeader title="Settings" description={`What you record about each patient at ${clinic.name}.`} />
         {tabs}
         <FieldsManager actor={clinic} fields={fields} suggestions={suggestions} branches={branches} specialtyLabel={SPECIALTY_LABELS[specialty]} />
+      </>
+    );
+  }
+
+  if (tab === "discounts") {
+    const { clinic } = await requireActiveClinicOwner();
+    return (
+      <>
+        <PageHeader title="Settings" description={`Discounts you can give at ${clinic.name}.`} />
+        {tabs}
+        <DiscountsManager rows={await listDiscountTypes(clinic.id)} />
       </>
     );
   }

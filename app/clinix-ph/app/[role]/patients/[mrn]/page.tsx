@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireActiveClinic } from "@/src/server/auth";
+import { PatientDental } from "@/src/components/clinic/patient-dental";
 import { PatientChartView } from "@/src/components/clinic/patient-chart";
 import { roleHome, type AppRole } from "@/src/lib/clinic-app-nav";
 import { openPatientChart } from "@/src/server/services/clinic-app";
@@ -20,5 +21,5 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
   const notes = seesNotes ? await listClinicalNotes(clinic, chart.patient.id) : null;
 
   const customFields = await patientFieldsForChart(clinic, chart.patient.id);
-  return <PatientChartView chart={chart} backHref={`${roleHome(role)}/patients`} canWrite={canWrite} notes={notes} canWriteNotes={seesNotes} canInvite={clinic.role !== "practitioner"} customFields={customFields} />;
+  return <PatientChartView chart={chart} backHref={`${roleHome(role)}/patients`} canWrite={canWrite} notes={notes} canWriteNotes={seesNotes} canInvite={clinic.role !== "practitioner"} customFields={customFields} dental={<PatientDental clinic={clinic} patientId={chart.patient.id} archived={chart.patient.archived} billingHref={`${roleHome(role)}/billing`} />} />;
 }

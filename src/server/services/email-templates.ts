@@ -110,3 +110,20 @@ export function composeAppointmentReminderEmail(clinic: { name: string; phone: s
     }),
   };
 }
+
+export function composeRecallEmail(clinic: { name: string; phone: string | null }, reason: string | null, url: string): ComposedEmail {
+  return {
+    subject: `Time for your next visit at ${clinic.name}`,
+    ...renderActionEmail({
+      preheader: `It's time to book your next visit at ${clinic.name}.`,
+      heading: "Time for your next visit",
+      paragraphs: [
+        "Hi there,",
+        `${clinic.name} would like to see you again${reason ? ` for ${reason.toLowerCase()}` : ""}. Regular visits keep small problems small.`,
+        clinic.phone ? `To book, please call us at ${clinic.phone}.` : "To book, please contact the clinic.",
+      ],
+      action: { label: "View clinic", url },
+      footnote: "You receive this because the clinic has your email for visit reminders. Ask the clinic to remove it if you'd rather not.",
+    }),
+  };
+}

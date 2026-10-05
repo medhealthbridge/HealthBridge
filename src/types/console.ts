@@ -19,6 +19,7 @@ export type ConsoleIconName =
   | "inventory"
   | "claims"
   | "reminders"
+  | "recalls"
   | "subscription"
   | "import-export"
   | "settings";

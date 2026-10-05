@@ -231,11 +231,11 @@ try {
       const issued = manila(day, hour + 1, minute);
       const invoiceId = randomUUID();
       await q(
-        "insert into invoices (id, clinic_id, patient_id, appointment_id, invoice_number, discount_type, discount_id_number, subtotal_cents, discount_cents, vat_cents, vat_exempt_cents, total_cents, status, issued_at, created_by_staff_id) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'paid',$13,$14)",
-        [invoiceId, clinicId, patient.id, appointmentId, number, patient.senior ? "senior_citizen" : "none", patient.senior ? patient.osca : null, t.subtotal, t.discount, t.vat, t.vatExempt, t.total, issued, staffIds.assistant],
+        "insert into invoices (id, clinic_id, patient_id, appointment_id, invoice_number, discount_type, discount_id_number, discount_label, discount_kind, subtotal_cents, discount_cents, vat_cents, vat_exempt_cents, total_cents, paid_cents, status, issued_at, created_by_staff_id) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$14,'paid',$15,$16)",
+        [invoiceId, clinicId, patient.id, appointmentId, number, patient.senior ? "senior_citizen" : "none", patient.senior ? patient.osca : null, patient.senior ? "Senior citizen (20%)" : null, patient.senior ? "statutory" : null, t.subtotal, t.discount, t.vat, t.vatExempt, t.total, issued, staffIds.assistant],
       );
       await q("insert into invoice_line_items (clinic_id, invoice_id, description, service_code, quantity, unit_price_cents, line_total_cents) values ($1,$2,$3,$4,1,$5,$5)", [clinicId, invoiceId, s.name, s.code, s.price]);
-      await q("insert into payments (clinic_id, invoice_id, method, amount_cents, reference_number, paid_at) values ($1,$2,$3,$4,$5,$6)", [clinicId, invoiceId, method, t.total, method === "cash" ? null : `REF${randomInt(100000, 999999)}`, issued]);
+      await q("insert into payments (clinic_id, invoice_id, receipt_number, method, amount_cents, reference_number, paid_at) values ($1,$2,$3,$4,$5,$6,$7)", [clinicId, invoiceId, `PR-${String(seq).padStart(6, "0")}`, method, t.total, method === "cash" ? null : `REF${randomInt(100000, 999999)}`, issued]);
       await q("insert into audit_logs (clinic_id, actor_user_id, entity_type, entity_id, action, diff, created_at) values ($1,$2,'invoice',$3,'create',$4,$5)", [clinicId, userIds.assistant, invoiceId, JSON.stringify({ after: { number, totalCents: t.total, method } }), issued]);
       if (code === "RCT" || code === "FILL") {
         await q("insert into clinical_notes (clinic_id, patient_id, appointment_id, author_staff_id, note_type, data, created_at) values ($1,$2,$3,$4,'general',$5,$6)", [clinicId, patient.id, appointmentId, staffIds.practitioner, JSON.stringify({
