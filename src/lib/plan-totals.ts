@@ -29,3 +29,14 @@ export function nextPlanStatus(current: PlanStatus, items: PlanItemLike[]): Plan
   if (active.some((item) => item.status === "done")) return "in_progress";
   return current === "completed" || current === "in_progress" ? "accepted" : current;
 }
+
+/**
+ * Whether staff may set the plan to `next` by hand. Plans that have started or finished can't be stepped back to
+ * draft/proposed/accepted (that would hide finished work); only the item buttons move them. A cancelled plan only reopens as a draft.
+ */
+export function canSetPlanStatus(current: PlanStatus, next: "draft" | "proposed" | "accepted" | "cancelled"): string | null {
+  if (current === next) return null;
+  if (current === "cancelled" && next !== "draft") return "A cancelled plan can only be reopened as a draft.";
+  if ((current === "in_progress" || current === "completed") && next !== "cancelled") return "Work on this plan has started. Undo the finished items to change its status.";
+  return null;
+}

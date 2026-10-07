@@ -3,7 +3,7 @@ import { withTenant } from "@/src/server/db/client";
 import { auditLogs, dentalChartEntries, patients, services, treatmentPlanItems, treatmentPlans } from "@/src/server/db/schema";
 import type { PlanItemStatus, PlanStatus } from "@/src/server/db/schema/dental";
 import { CODE_BY_KEY, normalizeSurfaces, type ChartEntryInput } from "@/src/lib/dental-chart";
-import { nextPlanStatus, planSummary } from "@/src/lib/plan-totals";
+import { canSetPlanStatus, nextPlanStatus, planSummary } from "@/src/lib/plan-totals";
 import { clinicDateString, NotFoundError, type StaffClinic } from "./clinic-app";
 import { insertChartEntry } from "./dental-chart";
 
@@ -98,7 +98,8 @@ export async function createPlan(clinic: Actor, actorUserId: string, patientId: 
 export async function setPlanStatus(clinic: Actor, actorUserId: string, planId: string, status: "draft" | "proposed" | "accepted" | "cancelled") {
   await withTenant(clinic.id, async (tx) => {
     const plan = await loadPlan(tx, clinic, planId);
-    if (plan.status === "cancelled" && status !== "draft") throw new PlanLockedError("A cancelled plan can only be reopened as a draft.");
+    const refused = canSetPlanStatus(plan.status, status);
+    if (refused) throw new PlanLockedError(refused);
     if (status === "cancelled") {
       const [billed] = await tx.select({ id: treatmentPlanItems.id }).from(treatmentPlanItems).where(and(eq(treatmentPlanItems.clinicId, clinic.id), eq(treatmentPlanItems.planId, planId), ne(treatmentPlanItems.status, "cancelled"), eq(treatmentPlanItems.status, "done"))).limit(1);
       if (billed) throw new PlanLockedError("This plan has finished work. Cancel the unfinished items instead.");

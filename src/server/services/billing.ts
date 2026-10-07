@@ -115,7 +115,7 @@ export async function checkout(clinic: Actor, actorUserId: string, input: Checko
           .select({ item: treatmentPlanItems })
           .from(treatmentPlanItems)
           .innerJoin(treatmentPlans, and(eq(treatmentPlans.clinicId, treatmentPlanItems.clinicId), eq(treatmentPlans.id, treatmentPlanItems.planId)))
-          .where(and(eq(treatmentPlanItems.clinicId, clinic.id), inArray(treatmentPlanItems.id, input.planItemIds), eq(treatmentPlans.patientId, input.patientId), isNull(treatmentPlanItems.invoiceId), ne(treatmentPlanItems.status, "cancelled"), ne(treatmentPlans.status, "cancelled")))
+          .where(and(eq(treatmentPlanItems.clinicId, clinic.id), inArray(treatmentPlanItems.id, input.planItemIds), eq(treatmentPlans.patientId, input.patientId), isNull(treatmentPlanItems.invoiceId), ne(treatmentPlanItems.status, "cancelled"), ne(treatmentPlans.status, "cancelled"), ne(treatmentPlans.status, "draft")))
           .for("update")
       : [];
     if (planRows.length !== new Set(input.planItemIds).size) throw new InvalidServiceError();
