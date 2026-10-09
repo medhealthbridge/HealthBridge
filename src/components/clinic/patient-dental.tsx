@@ -9,7 +9,7 @@ import { TreatmentPlansPanel } from "./treatment-plans-panel";
  * The dental part of a patient's chart. Doctors (owner, practitioner) see and write the tooth chart and plans;
  * the front desk sees plans (to record that the patient agreed and to bill them) but not the clinical chart.
  */
-export async function PatientDental({ clinic, patientId, archived, billingHref }: { clinic: Pick<StaffClinic, "id" | "role">; patientId: string; archived: boolean; billingHref: string }) {
+export async function PatientDental({ clinic, patientId, archived, billingHref, age = null }: { clinic: Pick<StaffClinic, "id" | "role">; patientId: string; archived: boolean; billingHref: string; /** Picks adult, mixed or baby teeth to show first. */ age?: number | null }) {
   const doctor = clinic.role !== "assistant";
   const [plans, services, entries] = await Promise.all([
     listPlans(clinic.id, patientId),
@@ -19,7 +19,7 @@ export async function PatientDental({ clinic, patientId, archived, billingHref }
   const planItems = plans.flatMap((plan) => plan.items.filter((item) => item.tooth).map((item) => ({ id: item.id, tooth: item.tooth as number, description: item.description, status: item.status, planTitle: plan.title })));
   return (
     <>
-      {entries && <ToothChartPanel patientId={patientId} entries={entries} planItems={planItems} canWrite={doctor && !archived} />}
+      {entries && <ToothChartPanel patientId={patientId} entries={entries} planItems={planItems} canWrite={doctor && !archived} age={age} />}
       <TreatmentPlansPanel
         patientId={patientId}
         plans={plans}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chartEntrySchema, deriveToothStates, guessChartCode, describeTooth, kindOf, normalizeSurfaces, PERMANENT_TEETH, rootCount, toothName, universalNumber, type ChartEntry } from "./dental-chart";
+import { chartEntrySchema, deriveToothStates, guessChartCode, describeTooth, kindOf, normalizeSurfaces, PERMANENT_TEETH, PRIMARY_TEETH, isTooth, rootCount, toothName, universalLabel, universalNumber, type ChartEntry } from "./dental-chart";
 
 const entry = (over: Partial<ChartEntry>): ChartEntry => ({ id: Math.random().toString(), tooth: 16, surfaces: null, kind: "condition", code: "caries", occurredOn: "2026-01-01", ...over });
 
@@ -62,5 +62,21 @@ describe("guessChartCode", () => {
     expect(guessChartCode("Tooth Extraction")).toBe("extraction");
     expect(guessChartCode("Porcelain Crown")).toBe("crown");
     expect(guessChartCode("Oral Prophylaxis (Cleaning)")).toBeNull();
+  });
+});
+
+describe("baby teeth", () => {
+  it("accepts FDI 51-85 and nothing in between", () => {
+    expect(PRIMARY_TEETH.every(isTooth)).toBe(true);
+    expect([50, 56, 66, 76, 86, 19, 9].some(isTooth)).toBe(false);
+  });
+  it("names and letters them", () => {
+    expect(toothName(55)).toBe("Upper right baby second molar");
+    expect(toothName(71)).toBe("Lower left baby central incisor");
+    expect([55, 51, 61, 65, 75, 71, 81, 85].map(universalLabel)).toEqual(["A", "E", "F", "J", "K", "O", "P", "T"]);
+    expect(new Set(PRIMARY_TEETH.map(universalLabel)).size).toBe(20);
+  });
+  it("gives baby molars molar roots", () => {
+    expect([kindOf(54), rootCount(54), rootCount(84), kindOf(53)]).toEqual(["molar", 3, 2, "canine"]);
   });
 });

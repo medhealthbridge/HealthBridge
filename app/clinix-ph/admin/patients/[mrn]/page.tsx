@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireActiveClinicOwner } from "@/src/server/auth";
+import { ageOf } from "@/src/components/clinic/patients-panel";
 import { PatientDental } from "@/src/components/clinic/patient-dental";
 import { PatientChartView } from "@/src/components/clinic/patient-chart";
 import { CLINIX_ROUTES } from "@/src/lib/constants";
@@ -20,5 +21,5 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
   const notes = seesNotes ? await listClinicalNotes(clinic, chart.patient.id) : null;
 
   const customFields = await patientFieldsForChart(clinic, chart.patient.id);
-  return <PatientChartView chart={chart} backHref={`${CLINIX_ROUTES.admin}/patients`} canWrite notes={notes} canWriteNotes canInvite customFields={customFields} dental={<PatientDental clinic={clinic} patientId={chart.patient.id} archived={chart.patient.archived} billingHref={`${CLINIX_ROUTES.admin}/billing`} />} />;
+  return <PatientChartView chart={chart} backHref={`${CLINIX_ROUTES.admin}/patients`} canWrite notes={notes} canWriteNotes canInvite customFields={customFields} dental={<PatientDental clinic={clinic} patientId={chart.patient.id} archived={chart.patient.archived} age={ageOf(chart.patient.dateOfBirth)} billingHref={`${CLINIX_ROUTES.admin}/billing`} />} />;
 }

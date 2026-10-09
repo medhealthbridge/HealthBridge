@@ -11,7 +11,7 @@ import { DrawerHeader } from "@/src/components/console/drawer-header";
 import { CONSOLE_INPUT } from "@/src/components/console/console-input";
 import { FormField } from "@/src/components/console/form-field";
 import { useToast } from "@/src/components/console/toast";
-import { CHART_CODES, PERMANENT_TEETH, SURFACES, guessChartCode, toothName } from "@/src/lib/dental-chart";
+import { CHART_CODES, PERMANENT_TEETH, PRIMARY_TEETH, SURFACES, guessChartCode, toothName } from "@/src/lib/dental-chart";
 import { itemTotal } from "@/src/lib/plan-totals";
 import {
   addPlanItemAction, cancelItemAction, createPlanAction, markItemDoneAction, markItemNotDoneAction, setPlanStatusAction, type DentalState,
@@ -263,7 +263,8 @@ function ItemDialog({ plan, services, canCustom }: { plan: TreatmentPlan; servic
             <FormField id="item-tooth" label="Tooth (optional)" error={errors.tooth?.[0]}>
               <select id="item-tooth" name="tooth" defaultValue="" className={CONSOLE_INPUT}>
                 <option value="">Whole mouth / not tooth-specific</option>
-                {PERMANENT_TEETH.map((n) => <option key={n} value={n}>{n} · {toothName(n)}</option>)}
+                <optgroup label="Permanent">{PERMANENT_TEETH.map((n) => <option key={n} value={n}>{n} · {toothName(n)}</option>)}</optgroup>
+                <optgroup label="Baby teeth">{PRIMARY_TEETH.map((n) => <option key={n} value={n}>{n} · {toothName(n)}</option>)}</optgroup>
               </select>
             </FormField>
             <fieldset className="flex flex-wrap gap-x-3 gap-y-1">

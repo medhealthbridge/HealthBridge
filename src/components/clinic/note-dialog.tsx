@@ -14,7 +14,7 @@ const AREA = "min-h-24 rounded-lg border border-console-line bg-console-canvas p
 
 type Seed = { subjective: string; objective: string; assessment: string; plan: string };
 type NoteDialogProps =
-  | { mode: "new"; patientId: string }
+  | { mode: "new"; patientId: string; /** Prefill, e.g. a draft written from the tooth chart. */ seed?: Seed; /** Button text instead of "Add note". */ label?: string }
   | { mode: "edit"; noteId: string; seed: Seed }
   | { mode: "amend"; patientId: string; amendsNoteId: string; seed: Seed };
 
@@ -41,18 +41,20 @@ export function NoteDialog(props: NoteDialogProps) {
     handled.current = state;
   }, [state, toast, props.mode]);
 
-  const seed = props.mode === "new" ? undefined : props.seed;
+  const seed = props.seed;
+  const buttonLabel = props.mode === "new" ? props.label : undefined;
   const errors = state.fieldErrors ?? {};
   const v = (key: string) => (state.values as Record<string, string> | undefined)?.[key];
 
   return (
     <>
-      <ConsoleButton variant={props.mode === "new" ? "primary" : "secondary"} size={props.mode === "new" ? "md" : "sm"} onClick={() => setOpen(true)}>
+      <ConsoleButton variant={props.mode === "new" ? "primary" : "secondary"} size={props.mode === "new" && !buttonLabel ? "md" : "sm"} onClick={() => setOpen(true)}>
         {props.mode === "new" ? <FilePlus aria-hidden="true" className="size-4" /> : props.mode === "edit" ? <Pencil aria-hidden="true" className="size-3.5" /> : null}
-        {TITLE[props.mode]}
+        {buttonLabel ?? TITLE[props.mode]}
       </ConsoleButton>
       <ConsoleDialog open={open} onClose={() => setOpen(false)} label={TITLE[props.mode]}>
-        <form action={action} className="flex min-h-0 flex-1 flex-col">
+        {/* Keyed by the prefill so a fresh draft replaces the old one each time it changes. */}
+        <form key={seed ? JSON.stringify(seed) : "blank"} action={action} className="flex min-h-0 flex-1 flex-col">
           <DrawerHeader
             title={TITLE[props.mode]}
             subtitle={props.mode === "amend" ? "Adds a correction that points back at the original. The original stays as written." : props.mode === "edit" ? "You can edit your own note for 24 hours; after that, amend it." : "Everything is recorded in the audit log."}

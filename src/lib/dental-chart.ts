@@ -2,21 +2,34 @@ import { z } from "zod";
 
 /** Permanent teeth, FDI two-digit numbering: first digit = quadrant (1 upper right, 2 upper left, 3 lower left, 4 lower right), second = position from the midline (1 central incisor … 8 wisdom). */
 export const PERMANENT_TEETH = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28, 48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38] as const;
-export type Tooth = (typeof PERMANENT_TEETH)[number];
+/** Baby (primary) teeth: quadrants 5-8 in the same order as 1-4, positions 1-5 (incisors, canine, two molars). */
+export const PRIMARY_TEETH = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65, 85, 84, 83, 82, 81, 71, 72, 73, 74, 75] as const;
+export type PermanentTooth = (typeof PERMANENT_TEETH)[number];
+export type PrimaryTooth = (typeof PRIMARY_TEETH)[number];
+export type Tooth = PermanentTooth | PrimaryTooth;
+export const ALL_TEETH: readonly Tooth[] = [...PERMANENT_TEETH, ...PRIMARY_TEETH];
 
-export const isTooth = (value: number): value is Tooth => (PERMANENT_TEETH as readonly number[]).includes(value);
+export const isTooth = (value: number): value is Tooth => (ALL_TEETH as readonly number[]).includes(value);
+export const isPrimary = (tooth: number) => Math.floor(tooth / 10) >= 5;
 
-export const quadrantOf = (tooth: number) => Math.floor(tooth / 10);
+/** The quadrant as 1-4, for baby teeth too (5 → 1, 6 → 2, 7 → 3, 8 → 4). */
+export const quadrantOf = (tooth: number) => {
+  const q = Math.floor(tooth / 10);
+  return q >= 5 ? q - 4 : q;
+};
 export const positionOf = (tooth: number) => tooth % 10;
 export const isUpper = (tooth: number) => quadrantOf(tooth) <= 2;
+/** Quadrants 1 and 4 are on the patient's right, which is the viewer's left on a chart. */
+export const isPatientRight = (tooth: number) => quadrantOf(tooth) === 1 || quadrantOf(tooth) === 4;
 
 export type ToothKind = "incisor" | "canine" | "premolar" | "molar";
 export const kindOf = (tooth: number): ToothKind => {
   const position = positionOf(tooth);
+  if (isPrimary(tooth)) return position <= 2 ? "incisor" : position === 3 ? "canine" : "molar";
   return position <= 2 ? "incisor" : position === 3 ? "canine" : position <= 5 ? "premolar" : "molar";
 };
 
-/** Roots under the crown: upper molars 3, lower molars 2, upper first premolars 2, everything else 1. */
+/** Roots under the crown: upper molars 3, lower molars 2, upper first premolars 2, everything else 1. Baby molars follow the same rule. */
 export function rootCount(tooth: number) {
   const kind = kindOf(tooth);
   if (kind === "molar") return isUpper(tooth) ? 3 : 2;
@@ -24,16 +37,27 @@ export function rootCount(tooth: number) {
   return 1;
 }
 
-/** US "Universal" number (1-32), which many Philippine dentists still use. */
+/** US "Universal" number (1-32) for a permanent tooth, which many Philippine dentists still use. */
 export function universalNumber(tooth: number) {
   const q = quadrantOf(tooth);
   const p = positionOf(tooth);
   return q === 1 ? 9 - p : q === 2 ? 8 + p : q === 3 ? 25 - p : 24 + p;
 }
 
+/** Universal label: 1-32 for permanent teeth, A-T for baby teeth. */
+export function universalLabel(tooth: number) {
+  if (!isPrimary(tooth)) return String(universalNumber(tooth));
+  const q = quadrantOf(tooth);
+  const p = positionOf(tooth);
+  const index = q === 1 ? 5 - p : q === 2 ? 4 + p : q === 3 ? 15 - p : 14 + p;
+  return String.fromCharCode(65 + index);
+}
+
 const POSITION_NAMES = ["", "central incisor", "lateral incisor", "canine", "first premolar", "second premolar", "first molar", "second molar", "third molar (wisdom)"];
+const PRIMARY_POSITION_NAMES = ["", "central incisor", "lateral incisor", "canine", "first molar", "second molar"];
 const QUADRANT_NAMES = ["", "Upper right", "Upper left", "Lower left", "Lower right"];
-export const toothName = (tooth: number) => `${QUADRANT_NAMES[quadrantOf(tooth)]} ${POSITION_NAMES[positionOf(tooth)]}`;
+export const toothName = (tooth: number) =>
+  isPrimary(tooth) ? `${QUADRANT_NAMES[quadrantOf(tooth)]} baby ${PRIMARY_POSITION_NAMES[positionOf(tooth)]}` : `${QUADRANT_NAMES[quadrantOf(tooth)]} ${POSITION_NAMES[positionOf(tooth)]}`;
 
 export const SURFACES = ["M", "D", "B", "L", "O"] as const;
 export type Surface = (typeof SURFACES)[number];
@@ -58,7 +82,7 @@ export const CHART_CODES: ChartCode[] = [
   { code: "watch", label: "Watch", kind: "condition", color: "#ca8a04", surfaces: true },
   { code: "filling", label: "Filling", kind: "procedure", color: "#0ea5e9", surfaces: true },
   { code: "sealant", label: "Sealant", kind: "procedure", color: "#22c55e", surfaces: true },
-  { code: "veneer", label: "Veneer", kind: "procedure", color: "#f5f5f4", surfaces: false },
+  { code: "veneer", label: "Veneer", kind: "procedure", color: "#84cc16", surfaces: false },
   { code: "crown", label: "Crown", kind: "procedure", color: "#eab308", surfaces: false },
   { code: "rct", label: "Root canal", kind: "procedure", color: "#4f46e5", surfaces: false },
   { code: "bridge", label: "Bridge (abutment / pontic)", kind: "procedure", color: "#f59e0b", surfaces: false },
