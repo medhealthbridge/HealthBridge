@@ -6,7 +6,7 @@ import { requireActiveClinic, requireClinicRole } from "@/src/server/auth";
 import { NotFoundError, clinicDateString } from "@/src/server/services/clinic-app";
 import { addChartEntry, ChartEntryNotFoundError, voidChartEntry } from "@/src/server/services/dental-chart";
 import {
-  addPlanItem, cancelPlanItem, createPlan, markPlanItemDone, markPlanItemNotDone, PlanItemNotFoundError, PlanLockedError, PlanNotFoundError, setPlanStatus,
+  addPlanItem, cancelPlanItem, createPlan, markPlanItemDone, markPlanItemNotDone, PlanItemNotFoundError, PlanLockedError, PlanNotFoundError, restorePlanItem, setPlanStatus,
 } from "@/src/server/services/treatment-plans";
 import { closeRecall, createRecall, RecallNotFoundError, sendRecallReminder } from "@/src/server/services/recalls";
 import { consumeRateLimit } from "@/src/server/services/rate-limit";
@@ -25,10 +25,18 @@ function refresh() {
   revalidatePath(`${CLINIX_ROUTES.admin}/recalls`);
 }
 
+/** Same ceiling as the price list: ₱1,000,000 per item. */
+const MAX_PRICE_PESOS = 1_000_000;
 const pesosToCents = (value: string) => {
   const number = Number(value.replace(/[,₱\s]/g, ""));
-  return value.trim() === "" || !Number.isFinite(number) || number < 0 ? null : Math.round(number * 100);
+  return value.trim() === "" || !Number.isFinite(number) || number < 0 || number > MAX_PRICE_PESOS ? null : Math.round(number * 100);
 };
+
+/** Every write here shares one budget per person, so a stuck button or a script can't flood the chart or the plan. */
+async function withinLimit(userId: string) {
+  return (await consumeRateLimit("clinic-write", userId, LIMIT)).allowed;
+}
+const TOO_MANY = { message: "Too many changes in a short time. Wait a moment and try again." };
 
 function planProblem(error: unknown): string {
   if (error instanceof PlanLockedError) return error.reason;
@@ -62,7 +70,7 @@ export async function addPlanItemAction(_prev: DentalState, data: FormData): Pro
   const parsed = planItemSchema.safeParse(Object.fromEntries(["planId", "serviceId", "description", "price", "phase", "tooth", "surfaces", "chartCode", "quantity"].map((key) => [key, text(data, key)])));
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
   const price = pesosToCents(parsed.data.price);
-  if (!parsed.data.serviceId && price === null) return { fieldErrors: { price: ["Enter the price for this custom work."] } };
+  if (!parsed.data.serviceId && price === null) return { fieldErrors: { price: [`Enter the price for this custom work (up to ₱${MAX_PRICE_PESOS.toLocaleString("en-PH")}).`] } };
   try {
     await addPlanItem(clinic, user.id, parsed.data.planId, { serviceId: parsed.data.serviceId, description: parsed.data.description, unitPriceCents: price, phase: parsed.data.phase, tooth: parsed.data.tooth, surfaces: parsed.data.surfaces, chartCode: parsed.data.chartCode, quantity: parsed.data.quantity });
   } catch (error) {
@@ -74,6 +82,7 @@ export async function addPlanItemAction(_prev: DentalState, data: FormData): Pro
 
 export async function setPlanStatusAction(data: FormData): Promise<{ message?: string }> {
   const { user, clinic } = await requireActiveClinic();
+  if (!(await withinLimit(user.id))) return TOO_MANY;
   const parsed = planStatusSchema.safeParse({ planId: text(data, "planId"), status: text(data, "status") });
   if (!parsed.success) return { message: "That change isn't allowed." };
   // Recording that the patient agreed is front-desk work too; cancelling or reopening is the doctors'.
@@ -89,6 +98,7 @@ export async function setPlanStatusAction(data: FormData): Promise<{ message?: s
 
 async function itemAction(data: FormData, run: (clinic: Awaited<ReturnType<typeof requireClinicRole>>["clinic"], userId: string, itemId: string) => Promise<void>) {
   const { user, clinic } = await requireClinicRole("owner", "practitioner");
+  if (!(await withinLimit(user.id))) return TOO_MANY;
   const parsed = itemIdSchema.safeParse({ itemId: text(data, "itemId") });
   if (!parsed.success) return { message: "That change isn't allowed." };
   try {
@@ -108,6 +118,9 @@ export async function markItemNotDoneAction(data: FormData): Promise<{ message?:
 }
 export async function cancelItemAction(data: FormData): Promise<{ message?: string }> {
   return itemAction(data, (clinic, userId, itemId) => cancelPlanItem(clinic, userId, itemId));
+}
+export async function restoreItemAction(data: FormData): Promise<{ message?: string }> {
+  return itemAction(data, (clinic, userId, itemId) => restorePlanItem(clinic, userId, itemId));
 }
 
 // ---- tooth chart: clinical, so owner and practitioners only ----
@@ -132,6 +145,7 @@ export async function addChartEntryAction(_prev: DentalState, data: FormData): P
 
 export async function voidChartEntryAction(data: FormData): Promise<{ message?: string }> {
   const { user, clinic } = await requireClinicRole("owner", "practitioner");
+  if (!(await withinLimit(user.id))) return TOO_MANY;
   const parsed = chartVoidSchema.safeParse({ entryId: text(data, "entryId"), reason: text(data, "reason") });
   if (!parsed.success) return { message: z.flattenError(parsed.error).fieldErrors.reason?.[0] ?? "That change isn't allowed." };
   try {
@@ -148,15 +162,22 @@ export async function voidChartEntryAction(data: FormData): Promise<{ message?: 
 
 export async function addRecallAction(_prev: DentalState, data: FormData): Promise<DentalState> {
   const { user, clinic } = await requireClinicRole("owner", "assistant", "practitioner");
+  if (!(await withinLimit(user.id))) return TOO_MANY;
   const parsed = recallInputSchema.safeParse({ patientId: text(data, "patientId"), months: text(data, "months") || 6, reason: text(data, "reason") });
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
-  await createRecall(clinic, user.id, parsed.data, clinicDateString(clinic.timezone));
+  try {
+    await createRecall(clinic, user.id, parsed.data, clinicDateString(clinic.timezone));
+  } catch (error) {
+    if (error instanceof NotFoundError) return { fieldErrors: { patientId: ["That patient could not be found, or is archived."] } };
+    throw error;
+  }
   refresh();
   return { saved: "Recall added" };
 }
 
 export async function closeRecallAction(data: FormData): Promise<{ message?: string }> {
   const { user, clinic } = await requireClinicRole("owner", "assistant", "practitioner");
+  if (!(await withinLimit(user.id))) return TOO_MANY;
   const parsed = z.object({ id: z.uuid(), outcome: z.enum(["completed", "cancelled"]) }).safeParse({ id: text(data, "id"), outcome: text(data, "outcome") });
   if (!parsed.success) return { message: "That change isn't allowed." };
   try {

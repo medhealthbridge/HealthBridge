@@ -55,6 +55,8 @@ export function CheckoutDialog({
   const [method, setMethod] = useState("cash");
   const [installments, setInstallments] = useState(0);
   const [recall, setRecall] = useState(false);
+  // One id per opened dialog: a double tap or a retried request gets the same receipt back, never a second one.
+  const [requestId, setRequestId] = useState("");
   const toast = useToast();
   const router = useRouter();
   const handled = useRef(state);
@@ -94,12 +96,14 @@ export function CheckoutDialog({
   const balance = totals.totalCents - paidNowCents;
   const needsId = discountType === "senior_citizen" || discountType === "pwd" || (discountType === "saved" && saved?.requiresId);
   const errors = state.fieldErrors ?? {};
+  // Typed text survives a server error (React resets a form after its action; these defaults put the values back).
+  const v = (key: string) => (state.values as Record<string, string> | undefined)?.[key];
   const empty = chosenServices.length === 0 && chosenPlan.length === 0;
   const phases = [...new Set(mine.map((item) => item.phase))].sort();
 
   return (
     <>
-      <ConsoleButton variant="primary" onClick={() => setOpen(true)}>
+      <ConsoleButton variant="primary" onClick={() => { setRequestId(crypto.randomUUID()); setOpen(true); }}>
         <Receipt aria-hidden="true" className="size-4" /> New checkout
       </ConsoleButton>
       <ConsoleDialog open={open} onClose={() => setOpen(false)} label="New checkout" placement="right">
@@ -108,6 +112,7 @@ export function CheckoutDialog({
           <input type="hidden" name="lines" value={JSON.stringify(chosenServices.map((s) => ({ serviceId: s.id, quantity: qty[s.id] })))} />
           <input type="hidden" name="planItemIds" value={JSON.stringify(chosenPlan.map((item) => item.id))} />
           <input type="hidden" name="payNow" value={payNow} />
+          <input type="hidden" name="requestId" value={requestId} />
           <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
             <FormField id="co-patient" label="Patient" error={errors.patientId?.[0]}>
               <select id="co-patient" name="patientId" required value={patientId} onChange={(event) => { setPatientId(event.target.value); setPicked([]); }} className={CONSOLE_INPUT}>
@@ -177,7 +182,7 @@ export function CheckoutDialog({
               {discountType === "custom" && (
                 <>
                   <FormField id="co-label" label="Describe it" hint="Shown on the receipt" error={errors.label?.[0]}>
-                    <input id="co-label" name="discountLabel" maxLength={60} placeholder="e.g. Employee discount" className={CONSOLE_INPUT} />
+                    <input id="co-label" name="discountLabel" defaultValue={v("discountLabel")} maxLength={60} placeholder="e.g. Employee discount" className={CONSOLE_INPUT} />
                   </FormField>
                   <div className="grid grid-cols-2 gap-3">
                     <FormField id="co-kind" label="Type">
@@ -194,7 +199,7 @@ export function CheckoutDialog({
               )}
               {needsId && (
                 <FormField id="co-discount-id" label={discountType === "saved" ? "ID number" : "Senior / PWD ID number"} error={errors.idNumber?.[0]}>
-                  <input id="co-discount-id" name="discountIdNumber" autoComplete="off" maxLength={40} className={CONSOLE_INPUT} />
+                  <input id="co-discount-id" name="discountIdNumber" defaultValue={v("discountIdNumber")} autoComplete="off" maxLength={40} className={CONSOLE_INPUT} />
                 </FormField>
               )}
             </div>
@@ -222,7 +227,7 @@ export function CheckoutDialog({
                   </FormField>
                   {method !== "cash" && (
                     <FormField id="co-ref" label="Reference number" error={errors.referenceNumber?.[0]}>
-                      <input id="co-ref" name="referenceNumber" autoComplete="off" maxLength={60} className={CONSOLE_INPUT} />
+                      <input id="co-ref" name="referenceNumber" defaultValue={v("referenceNumber")} autoComplete="off" maxLength={60} className={CONSOLE_INPUT} />
                     </FormField>
                   )}
                 </>
@@ -239,7 +244,7 @@ export function CheckoutDialog({
                     </FormField>
                     {installments > 0 && (
                       <FormField id="co-due" label="First due" error={errors.firstDueOn?.[0]}>
-                        <input id="co-due" name="firstDueOn" type="date" min={today} className={CONSOLE_INPUT} />
+                        <input id="co-due" name="firstDueOn" defaultValue={v("firstDueOn")} type="date" min={today} className={CONSOLE_INPUT} />
                       </FormField>
                     )}
                   </div>
@@ -256,12 +261,12 @@ export function CheckoutDialog({
               {recall && (
                 <div className="grid grid-cols-2 gap-3">
                   <FormField id="co-recall-months" label="In">
-                    <select id="co-recall-months" name="recallMonths" defaultValue={6} className={CONSOLE_INPUT}>
+                    <select id="co-recall-months" name="recallMonths" defaultValue={v("recallMonths") || 6} className={CONSOLE_INPUT}>
                       {[1, 3, 6, 12].map((months) => <option key={months} value={months}>{months} {months === 1 ? "month" : "months"}</option>)}
                     </select>
                   </FormField>
                   <FormField id="co-recall-reason" label="For">
-                    <input id="co-recall-reason" name="recallReason" maxLength={80} defaultValue="Cleaning and check-up" className={CONSOLE_INPUT} />
+                    <input id="co-recall-reason" name="recallReason" maxLength={80} defaultValue={v("recallReason") ?? "Cleaning and check-up"} className={CONSOLE_INPUT} />
                   </FormField>
                 </div>
               )}

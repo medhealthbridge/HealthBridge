@@ -34,8 +34,10 @@ export function nextPlanStatus(current: PlanStatus, items: PlanItemLike[]): Plan
  * Whether staff may set the plan to `next` by hand. Plans that have started or finished can't be stepped back to
  * draft/proposed/accepted (that would hide finished work); only the item buttons move them. A cancelled plan only reopens as a draft.
  */
-export function canSetPlanStatus(current: PlanStatus, next: "draft" | "proposed" | "accepted" | "cancelled"): string | null {
+export function canSetPlanStatus(current: PlanStatus, next: "draft" | "proposed" | "accepted" | "cancelled", frontDesk = false): string | null {
   if (current === next) return null;
+  // The front desk only moves a plan forward: shown to the patient, then agreed. Stepping back or cancelling is the doctors'.
+  if (frontDesk && !((current === "draft" && (next === "proposed" || next === "accepted")) || (current === "proposed" && next === "accepted"))) return "Only the dentist or owner can do that.";
   if (current === "cancelled" && next !== "draft") return "A cancelled plan can only be reopened as a draft.";
   if ((current === "in_progress" || current === "completed") && next !== "cancelled") return "Work on this plan has started. Undo the finished items to change its status.";
   return null;

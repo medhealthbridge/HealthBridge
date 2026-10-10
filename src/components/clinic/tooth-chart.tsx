@@ -66,7 +66,7 @@ export function ToothChartPanel({ patientId, entries, planItems, canWrite, age =
   const label = hover ?? selected;
 
   return (
-    <Panel className="lg:col-span-2">
+    <Panel className="min-w-0 lg:col-span-2">
       <PanelHeader title="Tooth chart">
         <div className="flex flex-wrap items-center gap-2">
           {view === "chart" && <Segmented label="Dentition" value={dentition} options={DENTITIONS} onChange={setDentition} />}
@@ -96,7 +96,9 @@ export function ToothChartPanel({ patientId, entries, planItems, canWrite, age =
               {affected.map(([tooth, state]) => {
                 const color = CODE_BY_KEY.get(state.headline!)?.color;
                 return (
-                  <button key={tooth} onClick={() => setSelected(tooth)} aria-pressed={selected === tooth} className="min-h-8 rounded-lg border px-2.5 text-[12px] font-semibold focus-visible:outline-2 focus-visible:outline-console-accent" style={{ color, borderColor: `${color}66`, backgroundColor: `${color}1f` }}>
+                  <button key={tooth} onClick={() => setSelected(tooth)} aria-pressed={selected === tooth} className="flex min-h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-semibold text-console-ink focus-visible:outline-2 focus-visible:outline-console-accent" style={{ borderColor: `${color}99`, backgroundColor: `${color}1f` }}>
+                    {/* Colour marks the finding; the text stays ink so it is readable on any tint. */}
+                    <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
                     #{tooth}: {describeTooth(state)}
                   </button>
                 );
@@ -105,7 +107,7 @@ export function ToothChartPanel({ patientId, entries, planItems, canWrite, age =
           )}
         </section>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
           <ToothDetail patientId={patientId} tooth={selected} entries={entries} planItems={planItems} canWrite={canWrite} state={selected ? states.get(selected) : undefined} onClose={() => setSelected(null)} onPick={setSelected} withPrimary={dentition !== "adult"} />
           <SoapDraftCard patientId={patientId} states={states} planned={planned} canWrite={canWrite} />
         </div>
@@ -180,8 +182,8 @@ function ToothCell({ tooth, state, selected, dimmed, onSelect, upper }: { tooth:
       style={color ? { backgroundColor: `${color}22`, borderColor: `${color}88` } : undefined}
     >
       {upper ? glyph : null}
-      <span className="mt-0.5 text-[10px] font-semibold tabular-nums sm:text-[11px]" style={{ color: color ?? "var(--color-console-muted)" }}>{tooth}</span>
-      <span className="block h-3.5 truncate text-[9px] leading-3.5 font-bold" style={{ color }}>{headline ? SHORT[headline.code] ?? headline.label : ""}</span>
+      <span className={`mt-0.5 text-[10px] tabular-nums sm:text-[11px] ${color ? "font-extrabold text-console-ink" : "font-semibold text-console-muted"}`}>{tooth}</span>
+      <span className="block h-3.5 truncate text-[9px] leading-3.5 font-bold text-console-ink">{headline ? SHORT[headline.code] ?? headline.label : ""}</span>
       {upper ? null : <div className="order-first w-full">{glyph}</div>}
     </button>
   );

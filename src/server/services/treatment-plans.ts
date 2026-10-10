@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, ne, or } from "drizzle-orm";
 import { withTenant } from "@/src/server/db/client";
 import { auditLogs, dentalChartEntries, patients, services, treatmentPlanItems, treatmentPlans } from "@/src/server/db/schema";
 import type { PlanItemStatus, PlanStatus } from "@/src/server/db/schema/dental";
@@ -71,9 +71,12 @@ export async function listBillablePlanItems(clinicId: string) {
   });
 }
 
+/** Loads a plan to change it. An archived patient is read-only, here and not just on screen. */
 async function loadPlan(tx: Tx, clinic: Actor, planId: string) {
   const [plan] = await tx.select().from(treatmentPlans).where(and(eq(treatmentPlans.clinicId, clinic.id), eq(treatmentPlans.id, planId))).for("update").limit(1);
   if (!plan) throw new PlanNotFoundError();
+  const [patient] = await tx.select({ id: patients.id }).from(patients).where(and(eq(patients.clinicId, clinic.id), eq(patients.id, plan.patientId), isNull(patients.deletedAt))).limit(1);
+  if (!patient) throw new PlanLockedError("This patient is archived. Restore them to change their plan.");
   return plan;
 }
 
@@ -98,11 +101,16 @@ export async function createPlan(clinic: Actor, actorUserId: string, patientId: 
 export async function setPlanStatus(clinic: Actor, actorUserId: string, planId: string, status: "draft" | "proposed" | "accepted" | "cancelled") {
   await withTenant(clinic.id, async (tx) => {
     const plan = await loadPlan(tx, clinic, planId);
-    const refused = canSetPlanStatus(plan.status, status);
+    const refused = canSetPlanStatus(plan.status, status, clinic.role === "assistant");
     if (refused) throw new PlanLockedError(refused);
     if (status === "cancelled") {
-      const [billed] = await tx.select({ id: treatmentPlanItems.id }).from(treatmentPlanItems).where(and(eq(treatmentPlanItems.clinicId, clinic.id), eq(treatmentPlanItems.planId, planId), ne(treatmentPlanItems.status, "cancelled"), eq(treatmentPlanItems.status, "done"))).limit(1);
-      if (billed) throw new PlanLockedError("This plan has finished work. Cancel the unfinished items instead.");
+      // Finished work, or work already on a receipt (paid ahead), keeps the plan open: cancelling would strand it.
+      const [locked] = await tx
+        .select({ id: treatmentPlanItems.id })
+        .from(treatmentPlanItems)
+        .where(and(eq(treatmentPlanItems.clinicId, clinic.id), eq(treatmentPlanItems.planId, planId), ne(treatmentPlanItems.status, "cancelled"), or(eq(treatmentPlanItems.status, "done"), isNotNull(treatmentPlanItems.invoiceId))))
+        .limit(1);
+      if (locked) throw new PlanLockedError("This plan has finished or billed work. Cancel the unfinished, unbilled items instead, or void the receipt first.");
     }
     await tx.update(treatmentPlans).set({ status, acceptedAt: status === "accepted" ? new Date() : plan.acceptedAt }).where(eq(treatmentPlans.id, planId));
     await tx.insert(auditLogs).values({ clinicId: clinic.id, actorUserId, entityType: "treatment_plan", entityId: planId, action: status === "cancelled" ? "delete" : "update", diff: { before: { status: plan.status }, after: { status } } });
@@ -150,9 +158,23 @@ export async function cancelPlanItem(clinic: Actor, actorUserId: string, itemId:
     const item = await loadItem(tx, clinic, itemId);
     if (item.invoiceId) throw new PlanLockedError("This item is on a receipt. Void the receipt first.");
     if (item.status === "done") throw new PlanLockedError("This work is done. Mark it not done first.");
+    const plan = await loadPlan(tx, clinic, item.planId);
     await tx.update(treatmentPlanItems).set({ status: "cancelled" }).where(eq(treatmentPlanItems.id, itemId));
-    await refreshStatus(tx, clinic, await loadPlan(tx, clinic, item.planId));
+    await refreshStatus(tx, clinic, plan);
     await tx.insert(auditLogs).values({ clinicId: clinic.id, actorUserId, entityType: "treatment_plan", entityId: item.planId, action: "delete", diff: { itemCancelled: { itemId, description: item.description } } });
+  });
+}
+
+/** Undo a mistaken "Remove": the item goes back on the plan at the price agreed. */
+export async function restorePlanItem(clinic: Actor, actorUserId: string, itemId: string) {
+  await withTenant(clinic.id, async (tx) => {
+    const item = await loadItem(tx, clinic, itemId);
+    if (item.status !== "cancelled") throw new PlanLockedError("This item isn't removed.");
+    const plan = await loadPlan(tx, clinic, item.planId);
+    if (plan.status === "cancelled") throw new PlanLockedError("Reopen the plan first.");
+    await tx.update(treatmentPlanItems).set({ status: "planned" }).where(eq(treatmentPlanItems.id, itemId));
+    await refreshStatus(tx, clinic, plan);
+    await tx.insert(auditLogs).values({ clinicId: clinic.id, actorUserId, entityType: "treatment_plan", entityId: item.planId, action: "update", diff: { itemRestored: { itemId, description: item.description } } });
   });
 }
 

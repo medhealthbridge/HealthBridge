@@ -14,7 +14,7 @@ import { useToast } from "@/src/components/console/toast";
 import { CHART_CODES, PERMANENT_TEETH, PRIMARY_TEETH, SURFACES, guessChartCode, toothName } from "@/src/lib/dental-chart";
 import { itemTotal } from "@/src/lib/plan-totals";
 import {
-  addPlanItemAction, cancelItemAction, createPlanAction, markItemDoneAction, markItemNotDoneAction, setPlanStatusAction, type DentalState,
+  addPlanItemAction, cancelItemAction, createPlanAction, markItemDoneAction, markItemNotDoneAction, restoreItemAction, setPlanStatusAction, type DentalState,
 } from "@/src/server/actions/dental";
 import type { PlanItem, TreatmentPlan } from "@/src/server/services/treatment-plans";
 import type { Tone } from "@/src/types/console";
@@ -37,7 +37,7 @@ type Rights = { canEdit: boolean; canAgree: boolean; canCustom: boolean };
 /** A patient's treatment plans: phases of work with an estimate, agreed with the patient, then billed as it is done. */
 export function TreatmentPlansPanel({ patientId, plans, services, canEdit, canAgree, canCustom, billingHref }: { patientId: string; plans: TreatmentPlan[]; services: PlanService[]; billingHref: string } & Rights) {
   return (
-    <Panel className="lg:col-span-2">
+    <Panel className="min-w-0 lg:col-span-2">
       <PanelHeader title="Treatment plans">{canEdit && <PlanDialog patientId={patientId} />}</PanelHeader>
       {plans.length === 0 ? (
         <p className="px-3.5 py-6 text-center text-[13px] text-console-muted">No treatment plans yet.</p>
@@ -111,7 +111,9 @@ function PlanCard({ plan, services, rights, billingHref }: { plan: TreatmentPlan
         {(rights.canEdit || rights.canAgree) && plan.status === "draft" && step("proposed", "Mark as shown to patient")}
         {(rights.canEdit || rights.canAgree) && (plan.status === "draft" || plan.status === "proposed") && step("accepted", "Patient agreed", "primary")}
         {rights.canEdit && plan.status === "accepted" && step("draft", "Back to draft")}
-        {rights.canEdit && open && step("cancelled", "Cancel plan", "danger")}
+        {rights.canEdit && open && (
+          <ConfirmButton label="Cancel plan" title="Cancel this plan?" body="It stays on the chart, struck through, and leaves the estimate. You can reopen it as a draft later." confirm="Cancel plan" pending={pending} onConfirm={() => run(setPlanStatusAction, { planId: plan.id, status: "cancelled" })} />
+        )}
         {billingHref && summary.toBillCents > 0 && plan.status !== "cancelled" && (
           <Link href={billingHref} className="inline-flex min-h-9 items-center rounded-lg border border-console-line px-3 text-[13px] font-semibold hover:bg-console-canvas focus-visible:outline-2 focus-visible:outline-console-accent">Bill from plan</Link>
         )}
@@ -139,6 +141,7 @@ function ItemRow({ item, canEdit }: { item: PlanItem; canEdit: boolean }) {
       </div>
       <span className="tabular-nums">{money(itemTotal(item))}</span>
       {done ? <Pill tone="accent">Done</Pill> : cancelled ? <Pill tone="danger">Cancelled</Pill> : <Pill tone="neutral">Planned</Pill>}
+      {canEdit && cancelled && <ConsoleButton size="sm" disabled={pending} onClick={() => act(restoreItemAction)}>Restore</ConsoleButton>}
       {canEdit && !cancelled && (
         <div className="flex gap-1.5">
           {done ? (
@@ -146,12 +149,32 @@ function ItemRow({ item, canEdit }: { item: PlanItem; canEdit: boolean }) {
           ) : (
             <>
               <ConsoleButton size="sm" variant="primary" disabled={pending} onClick={() => act(markItemDoneAction)}>Mark done</ConsoleButton>
-              {!item.invoiceId && <ConsoleButton size="sm" variant="danger" disabled={pending} onClick={() => act(cancelItemAction)}>Remove</ConsoleButton>}
+              {!item.invoiceId && <ConfirmButton label="Remove" title="Remove this item?" body={`${item.description} leaves the estimate. You can restore it later at the same price.`} confirm="Remove" pending={pending} onConfirm={() => act(cancelItemAction)} />}
             </>
           )}
         </div>
       )}
     </li>
+  );
+}
+
+/** A destructive step asks first: the two buttons sit next to "Mark done", where a slip is easy. */
+function ConfirmButton({ label, title, body, confirm, pending, onConfirm }: { label: string; title: string; body: string; confirm: string; pending: boolean; onConfirm: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <ConsoleButton size="sm" variant="danger" disabled={pending} onClick={() => setOpen(true)}>{label}</ConsoleButton>
+      <ConsoleDialog open={open} onClose={() => setOpen(false)} label={title} placement="center">
+        <div className="flex flex-col gap-3 p-4">
+          <h2 className="font-display text-base font-extrabold">{title}</h2>
+          <p className="text-[13px] text-console-muted">{body}</p>
+          <div className="flex justify-end gap-2">
+            <ConsoleButton onClick={() => setOpen(false)}>Keep it</ConsoleButton>
+            <ConsoleButton variant="danger" disabled={pending} onClick={() => { setOpen(false); onConfirm(); }}>{confirm}</ConsoleButton>
+          </div>
+        </div>
+      </ConsoleDialog>
+    </>
   );
 }
 

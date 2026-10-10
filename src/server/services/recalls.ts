@@ -1,9 +1,9 @@
-import { and, asc, eq, inArray, lte } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import { withTenant, withPlatformAdmin } from "@/src/server/db/client";
 import { auditLogs, clinics, patients, recalls } from "@/src/server/db/schema";
 import { clinicLinkOrigin } from "@/src/lib/clinic-host";
 import { addMonths } from "@/src/lib/installments";
-import { clinicDateString, type StaffClinic } from "./clinic-app";
+import { clinicDateString, NotFoundError, type StaffClinic } from "./clinic-app";
 import { sendRecallEmail } from "./email";
 
 export class RecallNotFoundError extends Error {}
@@ -34,7 +34,8 @@ export async function listRecalls(clinic: Pick<StaffClinic, "id" | "timezone">):
       .select({ recall: recalls, firstName: patients.firstName, lastName: patients.lastName, displayName: patients.displayName, mrn: patients.medicalRecordNumber, phone: patients.contactPhone, email: patients.contactEmail })
       .from(recalls)
       .innerJoin(patients, and(eq(patients.clinicId, recalls.clinicId), eq(patients.id, recalls.patientId)))
-      .where(and(eq(recalls.clinicId, clinic.id), inArray(recalls.status, ["pending", "notified"])))
+      // Archived patients drop off the list: no one should be chasing them.
+      .where(and(eq(recalls.clinicId, clinic.id), inArray(recalls.status, ["pending", "notified"]), isNull(patients.deletedAt)))
       .orderBy(asc(recalls.dueDate))
       .limit(300);
     return rows.map(({ recall, ...patient }) => ({
@@ -47,6 +48,8 @@ export async function listRecalls(clinic: Pick<StaffClinic, "id" | "timezone">):
 export async function createRecall(clinic: Pick<StaffClinic, "id">, actorUserId: string, input: { patientId: string; months?: number; dueOn?: string; reason: string | null }, today: string) {
   const dueDate = input.dueOn ?? addMonths(today, input.months ?? 6);
   return withTenant(clinic.id, async (tx) => {
+    const [patient] = await tx.select({ id: patients.id }).from(patients).where(and(eq(patients.clinicId, clinic.id), eq(patients.id, input.patientId), isNull(patients.deletedAt))).limit(1);
+    if (!patient) throw new NotFoundError("patient");
     const [row] = await tx.insert(recalls).values({ clinicId: clinic.id, patientId: input.patientId, recallType: "dental_recall", dueDate, notes: input.reason }).returning({ id: recalls.id });
     await tx.insert(auditLogs).values({ clinicId: clinic.id, actorUserId, entityType: "recall", entityId: row.id, action: "create", diff: { after: { patientId: input.patientId, dueDate } } });
     return row;
@@ -74,20 +77,32 @@ export async function sendRecallReminder(clinic: Pick<StaffClinic, "id" | "name"
       .from(recalls)
       .innerJoin(patients, and(eq(patients.clinicId, recalls.clinicId), eq(patients.id, recalls.patientId)))
       .innerJoin(clinics, eq(clinics.id, recalls.clinicId))
-      .where(and(eq(recalls.clinicId, clinic.id), eq(recalls.id, recallId), inArray(recalls.status, ["pending", "notified"])))
+      .where(and(eq(recalls.clinicId, clinic.id), eq(recalls.id, recallId), inArray(recalls.status, ["pending", "notified"]), isNull(patients.deletedAt)))
       .limit(1);
     return row ?? null;
   });
   if (!target) throw new RecallNotFoundError();
   if (!target.email) return false;
+  // Claim before sending, so the daily job and a "Send reminder" tap at the same moment send one email, not two.
+  // The claim only succeeds if no one has touched notified_at since we read it.
+  const before = { status: target.recall.status, notifiedAt: target.recall.notifiedAt };
+  const claimed = await withTenant(clinic.id, (tx) =>
+    tx.update(recalls).set({ status: "notified", notifiedAt: new Date() })
+      .where(and(eq(recalls.clinicId, clinic.id), eq(recalls.id, recallId), before.notifiedAt
+        ? sql`date_trunc('milliseconds', ${recalls.notifiedAt}) = ${before.notifiedAt.toISOString()}::timestamptz`
+        : isNull(recalls.notifiedAt)))
+      .returning({ id: recalls.id }),
+  );
+  if (claimed.length === 0) return true; // someone else is sending it right now
   try {
     await sendRecallEmail(target.email, { name: clinic.name, phone: target.phone }, target.recall.notes, clinicLinkOrigin(clinic.subdomain));
   } catch (error) {
     console.error("[email] recall reminder failed:", error instanceof Error ? error.message : "unknown");
+    // Put it back so it can be tried again.
+    await withTenant(clinic.id, (tx) => tx.update(recalls).set(before).where(and(eq(recalls.clinicId, clinic.id), eq(recalls.id, recallId))));
     return false;
   }
   await withTenant(clinic.id, async (tx) => {
-    await tx.update(recalls).set({ status: "notified", notifiedAt: new Date() }).where(eq(recalls.id, recallId));
     if (actorUserId) await tx.insert(auditLogs).values({ clinicId: clinic.id, actorUserId, entityType: "recall", entityId: recallId, action: "update", diff: { reminderSent: true } });
   });
   return true;
@@ -102,7 +117,9 @@ export async function runDailyRecalls() {
     const limit = new Date(`${today}T00:00:00Z`);
     limit.setUTCDate(limit.getUTCDate() + 7);
     const due = await withTenant(clinic.id, (tx) =>
-      tx.select({ id: recalls.id }).from(recalls).where(and(eq(recalls.clinicId, clinic.id), eq(recalls.status, "pending"), lte(recalls.dueDate, limit.toISOString().slice(0, 10)))).limit(100),
+      tx.select({ id: recalls.id }).from(recalls)
+        .innerJoin(patients, and(eq(patients.clinicId, recalls.clinicId), eq(patients.id, recalls.patientId)))
+        .where(and(eq(recalls.clinicId, clinic.id), eq(recalls.status, "pending"), isNull(patients.deletedAt), lte(recalls.dueDate, limit.toISOString().slice(0, 10)))).limit(100),
     );
     for (const recall of due) if (await sendRecallReminder(clinic, null, recall.id)) sent++;
   }

@@ -15,6 +15,8 @@ export type Installment = { sequence: number; dueOn: string; amountCents: number
  */
 export function buildInstallments(balanceCents: number, count: number, firstDueOn: string): Installment[] {
   if (balanceCents <= 0 || count < 1) return [];
+  // Never a ₱0.00 part: a tiny balance gets fewer installments (5 centavos over 12 months → 5 parts of 1 centavo).
+  count = Math.min(count, balanceCents);
   const each = Math.floor(balanceCents / count);
   return Array.from({ length: count }, (_, index) => ({
     sequence: index + 1,

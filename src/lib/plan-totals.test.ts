@@ -42,3 +42,17 @@ describe("canSetPlanStatus", () => {
     expect(canSetPlanStatus("cancelled", "accepted")).not.toBeNull();
   });
 });
+
+describe("canSetPlanStatus for the front desk (QA BUG-012)", () => {
+  it("may show a plan to the patient and record that they agreed", () => {
+    expect(canSetPlanStatus("draft", "proposed", true)).toBeNull();
+    expect(canSetPlanStatus("proposed", "accepted", true)).toBeNull();
+    expect(canSetPlanStatus("draft", "accepted", true)).toBeNull();
+  });
+  it("may not step a plan back or cancel it", () => {
+    expect(canSetPlanStatus("accepted", "proposed", true)).not.toBeNull();
+    expect(canSetPlanStatus("accepted", "draft", true)).not.toBeNull();
+    expect(canSetPlanStatus("proposed", "cancelled", true)).not.toBeNull();
+    expect(canSetPlanStatus("cancelled", "draft", true)).not.toBeNull();
+  });
+});

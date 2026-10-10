@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { withTenant } from "@/src/server/db/client";
-import { auditLogs, clinicStaff, dentalChartEntries, patients, user } from "@/src/server/db/schema";
+import { auditLogs, clinicStaff, dentalChartEntries, patients, treatmentPlanItems, treatmentPlans, user } from "@/src/server/db/schema";
+import { nextPlanStatus } from "@/src/lib/plan-totals";
 import { CODE_BY_KEY, type ChartEntryInput } from "@/src/lib/dental-chart";
 import { clinicDateString, NotFoundError, type StaffClinic } from "./clinic-app";
 
@@ -66,13 +67,36 @@ export async function addChartEntry(clinic: Actor, actorUserId: string, patientI
 /** The delete: a mistaken entry is voided with a reason and stays in the history. */
 export async function voidChartEntry(clinic: Actor, actorUserId: string, entryId: string, reason: string) {
   await withTenant(clinic.id, async (tx) => {
+    // An archived patient's chart is read-only.
+    const [owner] = await tx
+      .select({ id: patients.id })
+      .from(dentalChartEntries)
+      .innerJoin(patients, and(eq(patients.clinicId, dentalChartEntries.clinicId), eq(patients.id, dentalChartEntries.patientId)))
+      .where(and(eq(dentalChartEntries.clinicId, clinic.id), eq(dentalChartEntries.id, entryId), isNull(patients.deletedAt)))
+      .limit(1);
+    if (!owner) throw new ChartEntryNotFoundError();
     const rows = await tx
       .update(dentalChartEntries)
       .set({ voidedAt: new Date(), voidReason: reason })
       .where(and(eq(dentalChartEntries.clinicId, clinic.id), eq(dentalChartEntries.id, entryId), isNull(dentalChartEntries.voidedAt)))
-      .returning({ id: dentalChartEntries.id });
+      .returning({ id: dentalChartEntries.id, planItemId: dentalChartEntries.planItemId });
     if (rows.length === 0) throw new ChartEntryNotFoundError();
-    await tx.insert(auditLogs).values({ clinicId: clinic.id, actorUserId, entityType: "dental_chart", entityId: entryId, action: "delete", diff: { after: { voided: true, reason } } });
+    // The entry came from "Mark done" on a plan: the work didn't happen after all, so the plan item goes back to planned.
+    const planItemId = rows[0].planItemId;
+    if (planItemId) {
+      const [item] = await tx
+        .update(treatmentPlanItems)
+        .set({ status: "planned", doneAt: null, doneByStaffId: null })
+        .where(and(eq(treatmentPlanItems.clinicId, clinic.id), eq(treatmentPlanItems.id, planItemId), eq(treatmentPlanItems.status, "done")))
+        .returning({ planId: treatmentPlanItems.planId });
+      if (item) {
+        const [plan] = await tx.select().from(treatmentPlans).where(and(eq(treatmentPlans.clinicId, clinic.id), eq(treatmentPlans.id, item.planId))).limit(1);
+        const items = await tx.select().from(treatmentPlanItems).where(and(eq(treatmentPlanItems.clinicId, clinic.id), eq(treatmentPlanItems.planId, item.planId)));
+        const next = plan ? nextPlanStatus(plan.status, items) : null;
+        if (plan && next !== plan.status) await tx.update(treatmentPlans).set({ status: next! }).where(eq(treatmentPlans.id, plan.id));
+      }
+    }
+    await tx.insert(auditLogs).values({ clinicId: clinic.id, actorUserId, entityType: "dental_chart", entityId: entryId, action: "delete", diff: { after: { voided: true, reason, planItemUndone: planItemId ?? undefined } } });
   });
 }
 

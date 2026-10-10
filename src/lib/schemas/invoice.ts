@@ -57,11 +57,15 @@ export const checkoutSchema = z
     /** Optional, never forced: remind the patient to come back in this many months. */
     recallMonths: z.coerce.number().int().min(0).max(24).default(0),
     recallReason: z.string().trim().max(80).default(""),
+    /** Made when the dialog opens; a replay of the same submit returns the first receipt instead of a second one. */
+    requestId: z.union([z.uuid(), z.literal("")]).transform((value) => value || null).default(null),
   })
   .superRefine((value, ctx) => {
     if (value.lines.length === 0 && value.planItemIds.length === 0) ctx.addIssue({ code: "custom", path: ["lines"], message: "Add at least one service or plan item." });
-    const paying = value.payNow === null || value.payNow > 0;
-    if (paying && !value.method) ctx.addIssue({ code: "custom", path: ["method"], message: "Choose how they paid." });
+    // "Pay all now" (payNow empty) on a free bill sends no method: only the server knows the total, so it checks that case.
+    // Whenever a method is sent, or an amount is typed, the usual rules apply here.
+    const paying = value.payNow === null ? !!value.method : value.payNow > 0;
+    if (value.payNow !== null && value.payNow > 0 && !value.method) ctx.addIssue({ code: "custom", path: ["method"], message: "Choose how they paid." });
     if (paying && value.method && value.method !== "cash" && value.referenceNumber.length < 4) {
       ctx.addIssue({ code: "custom", path: ["referenceNumber"], message: "Enter the payment reference number." });
     }
@@ -82,6 +86,7 @@ export const recordPaymentSchema = z
     amount: pesos("the amount").refine((cents) => cents > 0, "Enter the amount."),
     method: z.enum(PAYMENT_METHODS, "Choose how they paid."),
     referenceNumber: z.string().trim().max(60).default(""),
+    requestId: z.union([z.uuid(), z.literal("")]).transform((value) => value || null).default(null),
   })
   .superRefine((value, ctx) => {
     if (value.method !== "cash" && value.referenceNumber.length < 4) ctx.addIssue({ code: "custom", path: ["referenceNumber"], message: "Enter the payment reference number." });

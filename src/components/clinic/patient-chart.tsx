@@ -59,7 +59,8 @@ export function PatientChartView({ chart, backHref, canWrite, notes, canWriteNot
           ) : undefined
         }
       />
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* min-w-0: a wide child (the arch chart) scrolls inside its panel instead of widening the whole page. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         <Panel>
           <PanelHeader title="Details" />
           <dl className="px-3.5 py-1.5">

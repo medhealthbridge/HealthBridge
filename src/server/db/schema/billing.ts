@@ -34,6 +34,8 @@ export const invoices = pgTable(
     discountValue: integer("discount_value"), // percent (1-100) or fixed centavos; null for statutory
     // Sum of this invoice's payments, kept in step inside the payment transaction. Balance = total - paid.
     paidCents: integer("paid_cents").notNull().default(0),
+    // One per checkout dialog: a double tap or a network retry replays the same id and gets the first receipt back.
+    requestId: uuid("request_id"),
     voidReason: text("void_reason"),
     voidedAt: timestamp("voided_at", { withTimezone: true }),
     createdByStaffId: uuid("created_by_staff_id"),
@@ -42,6 +44,7 @@ export const invoices = pgTable(
   },
   (table) => ({
     clinicInvoiceNumberIdx: uniqueIndex("invoices_clinic_invoice_number_idx").on(table.clinicId, table.invoiceNumber),
+    clinicRequestIdx: uniqueIndex("invoices_clinic_request_idx").on(table.clinicId, table.requestId).where(sql`request_id is not null`),
     clinicPatientIdx: index("invoices_clinic_patient_idx").on(table.clinicId, table.patientId),
     clinicIssuedAtIdx: index("invoices_clinic_issued_at_idx").on(table.clinicId, table.issuedAt),
     clinicIdIdUnique: unique("invoices_clinic_id_id_unique").on(table.clinicId, table.id),
@@ -98,11 +101,14 @@ export const payments = pgTable(
     method: text("method").notNull(), // 'cash' | 'gcash' | 'maya' | 'card' | 'hmo'
     amountCents: integer("amount_cents").notNull(),
     referenceNumber: text("reference_number"),
+    requestId: uuid("request_id"), // same idea as invoices.request_id, for later payments
     paidAt: timestamp("paid_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     clinicInvoiceIdx: index("payments_clinic_invoice_idx").on(table.clinicId, table.invoiceId),
+    clinicReceiptIdx: uniqueIndex("payments_clinic_receipt_idx").on(table.clinicId, table.receiptNumber),
+    clinicRequestIdx: uniqueIndex("payments_clinic_request_idx").on(table.clinicId, table.requestId).where(sql`request_id is not null`),
     paymentsInvoiceFk: foreignKey({
       name: "payments_invoice_fk",
       columns: [table.clinicId, table.invoiceId],

@@ -5,12 +5,14 @@ import { listPatients, type StaffClinic } from "@/src/server/services/clinic-app
 import { listRecalls } from "@/src/server/services/recalls";
 import { RecallActions, RecallDialog } from "./recall-actions";
 
-const TIMING = { overdue: { label: "Overdue", tone: "danger" }, soon: { label: "Due this week", tone: "warn" }, later: { label: "Later", tone: "neutral" } } as const;
-const dateFormat = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" });
+const TIMING = { overdue: { label: "Overdue", tone: "danger" }, soon: { label: "Due within 30 days", tone: "warn" }, later: { label: "Later", tone: "neutral" } } as const;
 
 /** Patients due back. A reminder list, not a booking: staff decide whether and when to contact them. */
 export async function RecallsPage({ clinic }: { clinic: Pick<StaffClinic, "id" | "role" | "timezone"> }) {
   const [rows, { rows: patients }] = await Promise.all([listRecalls(clinic), listPatients(clinic.id)]);
+  // Due dates are calendar dates (no time), so they are shown as-is; "reminded" is a moment, shown in the clinic's timezone.
+  const dueFormat = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "UTC" });
+  const dateFormat = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: clinic.timezone });
   const canEmail = clinic.role !== "practitioner";
   return (
     <>
@@ -26,7 +28,7 @@ export async function RecallsPage({ clinic }: { clinic: Pick<StaffClinic, "id" |
             {rows.map((row) => (
               <Tr key={row.id}>
                 <Td>{row.patientName} <span className="text-console-muted">{row.mrn}</span></Td>
-                <Td className="whitespace-nowrap">{dateFormat.format(new Date(`${row.dueDate}T00:00:00+08:00`))}</Td>
+                <Td className="whitespace-nowrap">{dueFormat.format(new Date(`${row.dueDate}T00:00:00Z`))}</Td>
                 <Td>{row.reason ?? "Check-up"}</Td>
                 <Td>
                   <Pill tone={TIMING[row.timing].tone}>{TIMING[row.timing].label}</Pill>

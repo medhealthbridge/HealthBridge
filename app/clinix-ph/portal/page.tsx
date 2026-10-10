@@ -64,7 +64,12 @@ export default async function PortalPage() {
                   {record.receipts.map((receipt) => (
                     <li key={receipt.invoiceNumber} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                       <span><span className="block font-semibold">{receipt.invoiceNumber}</span><span className="text-slate-600">{receipt.issuedAt ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: record.timezone }).format(receipt.issuedAt) : ""}</span></span>
-                      <span className={receipt.status === "void" ? "text-slate-500 line-through" : "font-semibold"}>{formatPesoExact(receipt.totalCents / 100)}{receipt.status === "void" ? " (void)" : ""}</span>
+                      <span className="text-right">
+                        <span className={`block ${receipt.status === "void" ? "text-slate-500 line-through" : "font-semibold"}`}>{formatPesoExact(receipt.totalCents / 100)}{receipt.status === "void" ? " (void)" : ""}</span>
+                        {/* A bill on account says so, with what is still owed. */}
+                        {receipt.status === "open" && <span className="block text-xs font-semibold text-amber-800">Balance {formatPesoExact((receipt.totalCents - receipt.paidCents) / 100)}</span>}
+                        {receipt.status === "paid" && <span className="block text-xs text-slate-600">Paid</span>}
+                      </span>
                     </li>
                   ))}
                 </ul>

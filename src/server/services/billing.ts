@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { withTenant } from "@/src/server/db/client";
 import {
-  auditLogs, discountTypes, invoiceInstallments, invoiceLineItems, invoices, patients, payments, recalls, services, treatmentPlanItems, treatmentPlans,
+  appointments, auditLogs, discountTypes, invoiceInstallments, invoiceLineItems, invoices, patients, payments, recalls, services, treatmentPlanItems, treatmentPlans,
 } from "@/src/server/db/schema";
 import { describeDiscount, parseDiscountAmount, ruleFrom } from "@/src/lib/discounts";
 import { buildInstallments, installmentStatuses, nextInstallmentDue, addMonths, type InstallmentStatus } from "@/src/lib/installments";
@@ -22,6 +22,9 @@ export class InvalidPaymentError extends Error {
     super(reason);
   }
 }
+
+/** The largest bill or price the system takes: ₱10,000,000 (well inside a 32-bit centavo column). */
+export const MAX_BILL_CENTS = 1_000_000_000;
 
 type Actor = Pick<StaffClinic, "id" | "staffId" | "role"> & { timezone?: string };
 type Tx = Parameters<Parameters<typeof withTenant>[1]>[0];
@@ -97,12 +100,27 @@ async function resolveDiscount(tx: Tx, clinic: Actor, input: CheckoutInput["disc
 
 export async function checkout(clinic: Actor, actorUserId: string, input: CheckoutInput) {
   return withTenant(clinic.id, async (tx) => {
+    // A replay of the same dialog submit (double tap, network retry) gets the first receipt back. Taking the
+    // numbering lock first means two copies arriving together are handled one after the other.
+    if (input.requestId) {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`invoice:${clinic.id}`}))`);
+      const [done] = await tx
+        .select({ id: invoices.id, invoiceNumber: invoices.invoiceNumber, totalCents: invoices.totalCents, paidCents: invoices.paidCents })
+        .from(invoices)
+        .where(and(eq(invoices.clinicId, clinic.id), eq(invoices.requestId, input.requestId)))
+        .limit(1);
+      if (done) return { id: done.id, invoiceNumber: done.invoiceNumber, totalCents: done.totalCents, paidCents: done.paidCents, balanceCents: done.totalCents - done.paidCents, paymentReceipt: null, replayed: true };
+    }
     const [patient] = await tx
       .select({ id: patients.id })
       .from(patients)
       .where(and(eq(patients.clinicId, clinic.id), eq(patients.id, input.patientId), isNull(patients.deletedAt)))
       .limit(1);
     if (!patient) throw new NotFoundError("patient");
+    if (input.appointmentId) {
+      const [visit] = await tx.select({ id: appointments.id }).from(appointments).where(and(eq(appointments.clinicId, clinic.id), eq(appointments.id, input.appointmentId), eq(appointments.patientId, input.patientId))).limit(1);
+      if (!visit) throw new InvalidServiceError();
+    }
 
     // Lines from the price list (prices re-read here) and from this patient's treatment plan (the agreed estimate).
     const ids = [...new Set(input.lines.map((line) => line.serviceId))];
@@ -137,10 +155,14 @@ export async function checkout(clinic: Actor, actorUserId: string, input: Checko
     ];
 
     const discount = await resolveDiscount(tx, clinic, input.discount);
+    if (lines.reduce((sum, line) => sum + line.unitPriceCents * line.quantity, 0) > MAX_BILL_CENTS) throw new InvalidPaymentError("This bill is too large for one receipt. Split it into smaller receipts.");
     const totals = invoiceTotalsFor(lines, discount.rule);
 
     const payNow = input.payNow === null ? totals.totalCents : input.payNow;
     if (payNow > totals.totalCents) throw new InvalidPaymentError("The amount paid is more than the bill.");
+    // A free bill (₱0, or fully discounted) needs no payment method.
+    if (payNow > 0 && !input.method) throw new InvalidPaymentError("Choose how they paid.");
+    if (payNow > 0 && input.method !== "cash" && input.referenceNumber.length < 4) throw new InvalidPaymentError("Enter the payment reference number.");
     const balance = totals.totalCents - payNow;
     if (input.installmentCount > 0 && balance === 0) throw new InvalidPaymentError("There is no balance to spread into installments.");
     const today = clinicDateString(clinic.timezone ?? "Asia/Manila");
@@ -167,6 +189,7 @@ export async function checkout(clinic: Actor, actorUserId: string, input: Checko
         totalCents: totals.totalCents,
         paidCents: payNow,
         status: balance === 0 ? "paid" : "open",
+        requestId: input.requestId,
         issuedAt: now,
         createdByStaffId: clinic.staffId,
       })
@@ -200,12 +223,12 @@ export async function checkout(clinic: Actor, actorUserId: string, input: Checko
       clinicId: clinic.id, actorUserId, entityType: "invoice", entityId: invoice.id, action: "create",
       diff: { after: { number, patientId: input.patientId, totalCents: totals.totalCents, paidCents: payNow, balanceCents: balance, method: input.method ?? null, discount: discount.label, installments: input.installmentCount || null } },
     });
-    return { id: invoice.id, invoiceNumber: number, totalCents: totals.totalCents, paidCents: payNow, balanceCents: balance, paymentReceipt };
+    return { id: invoice.id, invoiceNumber: number, totalCents: totals.totalCents, paidCents: payNow, balanceCents: balance, paymentReceipt, replayed: false };
   });
 }
 
 /** A later payment on an open invoice (a deposit's balance, an installment). Exactly the balance is the most it can take. */
-export async function recordPayment(clinic: Actor, actorUserId: string, invoiceId: string, input: { amountCents: number; method: PaymentMethod; referenceNumber: string }) {
+export async function recordPayment(clinic: Actor, actorUserId: string, invoiceId: string, input: { amountCents: number; method: PaymentMethod; referenceNumber: string; requestId?: string | null }) {
   return withTenant(clinic.id, async (tx) => {
     const [invoice] = await tx
       .select({ id: invoices.id, status: invoices.status, totalCents: invoices.totalCents, paidCents: invoices.paidCents, invoiceNumber: invoices.invoiceNumber })
@@ -214,12 +237,17 @@ export async function recordPayment(clinic: Actor, actorUserId: string, invoiceI
       .for("update")
       .limit(1);
     if (!invoice) throw new InvoiceNotFoundError();
+    // The invoice row is locked, so a replayed submit waits here and then finds the payment the first one made.
+    if (input.requestId) {
+      const [done] = await tx.select({ receipt: payments.receiptNumber }).from(payments).where(and(eq(payments.clinicId, clinic.id), eq(payments.requestId, input.requestId))).limit(1);
+      if (done) return { receipt: done.receipt ?? "", balanceCents: invoice.totalCents - invoice.paidCents };
+    }
     if (invoice.status === "void") throw new InvoiceAlreadyVoidError();
     const balance = invoice.totalCents - invoice.paidCents;
     if (invoice.status !== "open" || balance <= 0) throw new InvalidPaymentError("This receipt has no balance.");
     if (input.amountCents > balance) throw new InvalidPaymentError("That is more than the balance left.");
     const receipt = await nextNumber(tx, clinic.id, "payment");
-    await tx.insert(payments).values({ clinicId: clinic.id, invoiceId, receiptNumber: receipt, method: input.method, amountCents: input.amountCents, referenceNumber: input.referenceNumber || null });
+    await tx.insert(payments).values({ clinicId: clinic.id, invoiceId, receiptNumber: receipt, method: input.method, amountCents: input.amountCents, referenceNumber: input.referenceNumber || null, requestId: input.requestId ?? null });
     const paid = invoice.paidCents + input.amountCents;
     await tx.update(invoices).set({ paidCents: paid, status: paid >= invoice.totalCents ? "paid" : "open" }).where(and(eq(invoices.clinicId, clinic.id), eq(invoices.id, invoiceId)));
     await tx.insert(auditLogs).values({ clinicId: clinic.id, actorUserId, entityType: "invoice", entityId: invoiceId, action: "update", diff: { payment: { receipt, amountCents: input.amountCents, method: input.method }, balanceCents: invoice.totalCents - paid } });

@@ -18,7 +18,7 @@ export type PaymentState = { message?: string; fieldErrors?: Record<string, stri
 export type DiscountFormState = { message?: string; fieldErrors?: Record<string, string[] | undefined>; saved?: string; values?: Record<string, string> };
 
 const text = (data: FormData, key: string) => (typeof data.get(key) === "string" ? (data.get(key) as string) : "");
-const FORM_KEYS = ["patientId", "appointmentId", "discountType", "savedDiscountId", "discountIdNumber", "discountLabel", "customKind", "customValue", "payNow", "method", "referenceNumber", "installmentCount", "firstDueOn", "recallMonths", "recallReason", "lines", "planItemIds"];
+const FORM_KEYS = ["patientId", "appointmentId", "discountType", "savedDiscountId", "discountIdNumber", "discountLabel", "customKind", "customValue", "payNow", "method", "referenceNumber", "installmentCount", "firstDueOn", "recallMonths", "recallReason", "lines", "planItemIds", "requestId"];
 
 function refresh() {
   revalidatePath(CLINIX_ROUTES.app, "layout");
@@ -54,6 +54,7 @@ export async function checkoutAction(_prev: CheckoutState, data: FormData): Prom
     firstDueOn: values.firstDueOn,
     recallMonths: values.recallMonths || 0,
     recallReason: values.recallReason,
+    requestId: values.requestId,
   });
   if (!parsed.success) {
     const flat = z.treeifyError(parsed.error);
@@ -83,10 +84,10 @@ export async function recordPaymentAction(_prev: PaymentState, data: FormData): 
   const { user, clinic } = await requireClinicRole("owner", "assistant");
   const limit = await consumeRateLimit("clinic-write", user.id, { max: 120, windowSeconds: 60 * 60 });
   if (!limit.allowed) return { message: "Too many changes in a short time. Wait a moment and try again." };
-  const parsed = recordPaymentSchema.safeParse({ invoiceId: text(data, "invoiceId"), amount: text(data, "amount"), method: text(data, "method"), referenceNumber: text(data, "referenceNumber") });
+  const parsed = recordPaymentSchema.safeParse({ invoiceId: text(data, "invoiceId"), amount: text(data, "amount"), method: text(data, "method"), referenceNumber: text(data, "referenceNumber"), requestId: text(data, "requestId") });
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
   try {
-    const result = await recordPayment(clinic, user.id, parsed.data.invoiceId, { amountCents: parsed.data.amount, method: parsed.data.method, referenceNumber: parsed.data.referenceNumber });
+    const result = await recordPayment(clinic, user.id, parsed.data.invoiceId, { amountCents: parsed.data.amount, method: parsed.data.method, referenceNumber: parsed.data.referenceNumber, requestId: parsed.data.requestId });
     refresh();
     return { recorded: result.receipt };
   } catch (error) {

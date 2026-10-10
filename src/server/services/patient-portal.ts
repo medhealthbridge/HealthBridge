@@ -99,7 +99,7 @@ export async function linkPortalUser(clinicId: string, patientId: string, userId
 }
 
 export type PortalVisit = { id: string; startsAt: Date; status: string; serviceName: string | null };
-export type PortalReceipt = { invoiceNumber: string; issuedAt: Date | null; totalCents: number; status: string };
+export type PortalReceipt = { invoiceNumber: string; issuedAt: Date | null; totalCents: number; paidCents: number; status: string };
 export type PortalRecord = {
   clinicName: string;
   timezone: string;
@@ -142,7 +142,7 @@ export async function getPortalRecords(userId: string): Promise<PortalRecord[]> 
           base(["requested", "confirmed", "checked_in", "in_progress"]).then((rows) => rows.filter((row) => row.startsAt >= now || row.status === "in_progress" || row.status === "checked_in")),
           base(["completed"]).orderBy(desc(appointments.startsAt)).limit(20),
           tx
-            .select({ invoiceNumber: invoices.invoiceNumber, issuedAt: invoices.issuedAt, totalCents: invoices.totalCents, status: invoices.status })
+            .select({ invoiceNumber: invoices.invoiceNumber, issuedAt: invoices.issuedAt, totalCents: invoices.totalCents, paidCents: invoices.paidCents, status: invoices.status })
             .from(invoices)
             .where(and(eq(invoices.clinicId, patient.clinicId), eq(invoices.patientId, patient.id), inArray(invoices.status, ["paid", "open", "void"])))
             .orderBy(desc(invoices.createdAt))

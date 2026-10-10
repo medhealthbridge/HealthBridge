@@ -18,6 +18,8 @@ export function RecordPaymentDialog({ invoiceId, balanceCents, number }: { invoi
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(recordPaymentAction, INITIAL);
   const [method, setMethod] = useState("cash");
+  // One id per opened dialog, so a double tap records one payment, not two.
+  const [requestId, setRequestId] = useState("");
   const toast = useToast();
   const router = useRouter();
   const handled = useRef(state);
@@ -33,12 +35,13 @@ export function RecordPaymentDialog({ invoiceId, balanceCents, number }: { invoi
 
   return (
     <>
-      <ConsoleButton variant="primary" onClick={() => setOpen(true)}>Record payment</ConsoleButton>
+      <ConsoleButton variant="primary" onClick={() => { setRequestId(crypto.randomUUID()); setOpen(true); }}>Record payment</ConsoleButton>
       <ConsoleDialog open={open} onClose={() => setOpen(false)} label="Record payment" placement="center">
         <form action={action} className="flex flex-col gap-3 p-4">
           <h2 className="font-display text-base font-extrabold">Payment on {number}</h2>
           <p className="text-[13px] text-console-muted">Balance: <strong className="text-console-ink">{formatPesoExact(balanceCents / 100)}</strong></p>
           <input type="hidden" name="invoiceId" value={invoiceId} />
+          <input type="hidden" name="requestId" value={requestId} />
           <FormField id="rp-amount" label="Amount (₱)" error={errors.amount?.[0]}>
             <div className="flex gap-2">
               <input id="rp-amount" name="amount" inputMode="decimal" required defaultValue={String(balanceCents / 100)} className={`${CONSOLE_INPUT} font-data`} />
