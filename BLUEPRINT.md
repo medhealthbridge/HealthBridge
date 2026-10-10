@@ -72,11 +72,11 @@ Defaults let work proceed; the answer changes the listed items. "Blocks" says wh
 | ID | Question | Default used now | Blocks |
 |---|---|---|---|
 | OQ-01 | May the clinic owner write clinical notes? (code: yes; roadmap: no) | keep code; show owner notes as authored | nothing (permission cell P-06) |
-| OQ-02 | Will PayMongo enable Subscriptions for DataBridgeSol (cards, Maya)? | Mode A only | K-208 only |
+| OQ-02 | Will PayMongo enable Subscriptions for DataBridgeSol (cards, Maya)? Answer 2026-10-10: PayMongo account not set up yet | Mode A only; ask PayMongo support about Subscriptions when registering | K-208 only |
 | OQ-03 | Who reviews the Terms, Privacy Policy and Data Processing Notice drafted by us? | drafts stay marked draft | K-401 and launch |
-| OQ-04 | Final tier prices and annual discount (code: 1,490 / 2,690 / 3,690 / 4,590 PHP per month) | code values; annual = 12 months less 0 percent | K-101 final values, launch |
+| OQ-04 | Final tier prices and annual discount (code: 1,490 / 2,690 / 3,690 / 4,590 PHP per month) | placeholders; owner answer 2026-10-10: not finalized. Code values, annual = 12 months less 0 percent, one edit in `src/lib/plans.ts` | K-101 final values, launch |
 | OQ-05 | Monthly AI answer cap per clinic | 300 | K-206 values |
-| OQ-06 | PayMongo business verification and live keys status | test keys only | K-603, launch |
+| OQ-06 | PayMongo business verification and live keys status | not set up (owner, 2026-10-10); provider fake in tests until then | K-603, launch |
 | OQ-07 | Error-tracking vendor and monthly infrastructure budget | pick on setup, free tier | K-601 |
 | OQ-08 | Record retention period | never delete; no expiry job | privacy text |
 | OQ-09 | Who is the DPO, and is NPC registration required for DataBridgeSol's systems (NPC Circular 2022-04 thresholds, verify with counsel)? | decision recorded in `docs/ops/compliance.md` | K-408, launch |
