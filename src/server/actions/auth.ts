@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { findAccountByEmail, replaceUnverifiedPassword } from "@/src/server/invitee-auth";
 import { auth } from "@/src/server/auth";
 import { isAdminHost } from "@/src/lib/clinic-host";
 import { ADMIN_LOGIN_ROUTE, CLINIX_ROUTES } from "@/src/lib/constants";
@@ -66,6 +67,7 @@ export async function signupAction(_prev: SignupState, formData: FormData): Prom
   if (!parsed.success) return { values, fieldErrors: z.flattenError(parsed.error).fieldErrors };
 
   try {
+    const before = await findAccountByEmail(parsed.data.email);
     // With email verification required, better-auth answers the same way for
     // a new and an already-registered email, and signs no one in until the
     // link is opened — so this reveals nothing about which emails exist.
@@ -73,6 +75,9 @@ export async function signupAction(_prev: SignupState, formData: FormData): Prom
       body: { ...parsed.data, callbackURL: CLINIX_ROUTES.onboarding },
       headers: await headers(),
     });
+    // An earlier, never-verified sign-up of this address: the newest sign-up's password wins, so whoever
+    // registered it first can't sign in once the real owner verifies (see replaceUnverifiedPassword).
+    if (before && !before.emailVerified) await replaceUnverifiedPassword(before.id, parsed.data.password, parsed.data.name);
     // Sends only to an existing unverified address and answers the same for any
     // other, so a retried sign-up gets its link without revealing who is registered.
     await auth.api.sendVerificationEmail({

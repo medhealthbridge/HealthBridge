@@ -104,13 +104,14 @@ export async function releaseStaffInvite(token: string) {
 export async function joinClinic(clinicId: string, userId: string, role: "owner" | "assistant" | "practitioner") {
   await withTenant(clinicId, async (tx) => {
     const [existing] = await tx
-      .select({ id: clinicStaff.id })
+      .select({ id: clinicStaff.id, role: clinicStaff.role })
       .from(clinicStaff)
       .where(and(eq(clinicStaff.clinicId, clinicId), eq(clinicStaff.userId, userId), isNull(clinicStaff.deletedAt)))
       .limit(1);
     let staffId: string;
     if (existing) {
-      await tx.update(clinicStaff).set({ role, isActive: true, joinedAt: new Date() }).where(eq(clinicStaff.id, existing.id));
+      // An invite never changes the owner: accepting one to your own clinic would otherwise leave it with no owner.
+      await tx.update(clinicStaff).set({ role: existing.role === "owner" ? "owner" : role, isActive: true, joinedAt: new Date() }).where(eq(clinicStaff.id, existing.id));
       staffId = existing.id;
     } else {
       [{ id: staffId }] = await tx.insert(clinicStaff).values({ clinicId, userId, role, joinedAt: new Date() }).returning({ id: clinicStaff.id });

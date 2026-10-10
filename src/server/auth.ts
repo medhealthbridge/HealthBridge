@@ -47,7 +47,8 @@ const AUTH_RATE_LIMITS: Record<string, { ip: RateLimitRule; email?: RateLimitRul
     ip: { max: 30, windowSeconds: FIFTEEN_MINUTES },
     email: { max: 10, windowSeconds: FIFTEEN_MINUTES },
   },
-  "/sign-up/email": { ip: { max: 5, windowSeconds: ONE_HOUR } },
+  // Per email too: a new sign-up replaces an unverified account's password, so it can't be repeated freely.
+  "/sign-up/email": { ip: { max: 5, windowSeconds: ONE_HOUR }, email: { max: 3, windowSeconds: ONE_HOUR } },
   "/sign-in/social": { ip: { max: 30, windowSeconds: FIFTEEN_MINUTES } },
   "/send-verification-email": {
     ip: { max: 10, windowSeconds: ONE_HOUR },

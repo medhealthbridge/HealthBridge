@@ -20,6 +20,14 @@ every host. The app calls them from its own Server Actions instead, which add th
 admin sign-in signs out anyone who isn't DataBridgeSol staff). Adding a client-side better-auth call means adding
 its path to that allowlist on purpose.
 
+## Unverified accounts belong to nobody
+
+Anyone can type any email into sign-up, so an account that hasn't been verified is not trusted. When the real owner
+of the address shows up, their password replaces whatever was set before (`replaceUnverifiedPassword`):
+a new sign-up for that email does it, and so does accepting an emailed invite (which also verifies the address).
+This stops "register the dentist's email first, then sign in after they verify it". An invite never changes a
+clinic owner's role, and an owner can't be edited or deactivated by anyone.
+
 ## Other protections
 
 - Email verification is required before any signed-in page; sign-up and reset never reveal whether an email exists.
