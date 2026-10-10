@@ -105,6 +105,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    // A reset signs out every device: a stolen session stops working the moment the owner resets.
+    revokeSessionsOnPasswordReset: true,
     // `url` points at better-auth's own /reset-password/:token, which checks
     // the token before redirecting to the form — so an expired link never
     // reaches a password field.
