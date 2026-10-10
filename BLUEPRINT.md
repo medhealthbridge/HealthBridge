@@ -16,6 +16,7 @@ Clinix PH is the clinic app of DataBridgeSol: a multi-tenant B2B SaaS for clinic
 | `docs/SCHEMA.md` | entities E, target permission matrix P, contracts A, jobs J, migrations M, seed | touching data, permissions, an action or a job |
 | `docs/TRD.md` | stack, structure, commands, env vars, integrations, operations, boundaries | setting up, deploying, choosing a tool |
 | `docs/DESIGN_BRIEF.md` | tokens, components C, five states, content and accessibility rules | designing or reviewing UI |
+| `docs/UI_KIT.md` | approved free libraries, palettes, font pairings, minimal rules | building a new surface or briefing Claude Design |
 | `docs/IMPLEMENTATION_PLAN.md` | waves, tasks K, tests T, coverage matrix, done rule, launch checklist | planning, building, testing |
 | `docs/baseline/*.md` | as-built snapshots dated 2026-10-10: schema, screens, actions, infra, checks | comparing code with the documents |
 | `docs/ops/*.md` | compliance, runbook, live-check (operational records) | operating and launching |

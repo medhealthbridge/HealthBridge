@@ -77,12 +77,17 @@ Contrast 4.5:1 text and 3:1 UI/borders; visible focus ring on every control (2 p
 
 Landing pages keep current copy; remove "Notify me" stubs and unverifiable claims (FR-026); pricing section reads from `PLAN_LIMITS` so price changes happen once (OQ-04); footer has Terms, Privacy, Data Processing, contact. Legal pages are plain, scannable, with headings and a table of contents when over 1,500 words.
 
-## 9. What this brief does not decide
+## 9. Minimal aesthetic kit
+
+Approved free libraries, seven contrast-verified palettes, six font pairings and the minimal rules for new surfaces are in `docs/UI_KIT.md`. New surfaces choose from it; they do not add colours, fonts or libraries outside it.
+
+## 10. What this brief does not decide
 
 Branding application (custom primary colour and logo per clinic, FR-130) is Later. Illustration, photography, and a new logo are outside this release.
 
-## 10. Change log
+## 11. Change log
 
 | Date | Change |
 |---|---|
 | 2026-10-10 | First version |
+| 2026-10-10 | Added section 9 pointing to `docs/UI_KIT.md` |
