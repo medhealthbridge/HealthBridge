@@ -31,6 +31,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Client-side page cache: a page visited in the last minute opens instantly from memory when you come back to
+  // it, with no loader and no server round trip. Saving anything (a Server Action that calls revalidatePath) clears
+  // this cache, so your own changes always show. The default for dynamic pages is 0 (refetch every time).
+  experimental: {
+    staleTimes: { dynamic: 60, static: 300 },
+  },
   async headers() {
     return [
       { source: "/(.*)", headers: securityHeaders },
