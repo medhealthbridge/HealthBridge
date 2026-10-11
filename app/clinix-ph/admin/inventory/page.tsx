@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { requireActiveClinicOwner } from "@/src/server/auth";
-import { InventoryPage } from "@/src/components/clinic/inventory-page";
-import { CLINIX_ROUTES } from "@/src/lib/constants";
+import { CachedPage } from "@/src/components/query/cached-page";
+import AdminInventoryView from "@/src/server/views/admin-inventory";
 
 export const metadata: Metadata = { title: "Inventory" };
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const { clinic } = await requireActiveClinicOwner();
-  return <InventoryPage clinic={clinic} basePath={`${CLINIX_ROUTES.admin}/inventory`} archivedView={(await searchParams).view === "archived"} />;
+// Content lives in src/server/views/admin-inventory.tsx and is cached on the client by TanStack Query.
+export default function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  return <CachedPage bundle={AdminInventoryView} view="admin/inventory" title={"Inventory"} gate={requireActiveClinicOwner} searchParams={searchParams} />;
 }

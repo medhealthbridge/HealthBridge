@@ -9,6 +9,7 @@ import type { ConsoleBrand, ConsoleUser, NavGroup } from "@/src/types/console";
 import { SignOutButton } from "@/src/components/sign-out-button";
 import { ConsoleIcon } from "./console-icon";
 import { consoleButtonClass } from "./console-button";
+import { LinkPending } from "./link-pending";
 
 type ConsoleSidebarProps = {
   brand: ConsoleBrand;
@@ -85,6 +86,7 @@ export function ConsoleSidebar({ brand, user, nav, collapsed, onToggleCollapsed,
                       <ConsoleIcon name={item.icon} className="size-3" />
                     </span>
                     <span className={collapsed ? "sr-only" : "min-w-0 truncate"}>{item.label}</span>
+                    <LinkPending className="absolute top-1 right-1 md:static md:ml-auto" />
                     {item.badge && !collapsed && (
                       <span className="hidden rounded-full bg-console-danger/15 px-1.5 text-[10px] font-semibold text-console-danger md:ml-auto md:inline">
                         {item.badge}

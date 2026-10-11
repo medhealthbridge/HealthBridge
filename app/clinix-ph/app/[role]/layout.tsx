@@ -9,6 +9,7 @@ import { CLINIX_ROUTES } from "@/src/lib/constants";
 import { initialsOf } from "@/src/lib/utils";
 import { ClinicSwitcher } from "./_components/clinic-switcher";
 import { ConsoleLink } from "./_components/console-link";
+import { QueryProvider } from "@/src/components/query/query-provider";
 
 export const metadata: Metadata = {
   title: { template: "%s · Clinix PH", default: "Clinic app · Clinix PH" },
@@ -52,7 +53,7 @@ export default async function ClinicAppLayout({
       }
       topbarSlot={role === "owner" ? <ConsoleLink href={CLINIX_ROUTES.admin} /> : undefined}
     >
-      {children}
+      <QueryProvider>{children}</QueryProvider>
     </ConsoleShell>
   );
 }

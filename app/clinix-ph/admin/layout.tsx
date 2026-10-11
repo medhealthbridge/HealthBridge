@@ -18,6 +18,7 @@ import { BranchProvider, type ConsoleBranch } from "./_components/branch-context
 import { BranchSwitcher } from "./_components/branch-switcher";
 import { ClinicAppLink } from "./_components/clinic-app-link";
 import { SampleDataNotice } from "./_components/sample-data-notice";
+import { QueryProvider } from "@/src/components/query/query-provider";
 
 export const metadata: Metadata = {
   title: { template: "%s · Clinix PH", default: "Owner console · Clinix PH" },
@@ -88,7 +89,7 @@ export default async function ClinixAdminLayout({ children }: { children: React.
         topbarSlot={<ClinicAppLink />}
       >
         <SampleDataNotice />
-        {children}
+        <QueryProvider>{children}</QueryProvider>
       </ConsoleShell>
     </BranchProvider>
   );

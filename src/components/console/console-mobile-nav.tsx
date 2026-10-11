@@ -10,6 +10,7 @@ import { SignOutButton } from "@/src/components/sign-out-button";
 import { consoleButtonClass } from "./console-button";
 import { ConsoleDialog } from "./console-dialog";
 import { ConsoleIcon } from "./console-icon";
+import { LinkPending } from "./link-pending";
 
 /** Bottom-bar slots before "More"; four keeps every label readable on a 360px phone. */
 const PRIMARY_COUNT = 4;
@@ -58,6 +59,7 @@ export function ConsoleMobileNav({ nav, user, theme, onToggleTheme, slot }: Cons
             >
               <ConsoleIcon name={item.icon} className="size-5" />
               <span className="max-w-full truncate">{item.shortLabel ?? item.label}</span>
+              <LinkPending className="absolute top-1.5 right-3" />
             </Link>
           );
         })}
@@ -102,6 +104,7 @@ export function ConsoleMobileNav({ nav, user, theme, onToggleTheme, slot }: Cons
                   >
                     <ConsoleIcon name={item.icon} className="size-4" />
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    <LinkPending />
                     {item.badge && <span className="rounded-full bg-console-danger/15 px-1.5 text-[10px] font-semibold text-console-danger">{item.badge}</span>}
                   </Link>
                 ))}

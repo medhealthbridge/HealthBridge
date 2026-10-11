@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { requireClinicRole } from "@/src/server/auth";
-import { ClaimsPage } from "@/src/components/clinic/claims-page";
+import { CachedPage } from "@/src/components/query/cached-page";
+import AppClaimsView from "@/src/server/views/app-claims";
 
 export const metadata: Metadata = { title: "Claims & receivables" };
 
-export default async function Page() {
-  const { clinic } = await requireClinicRole("owner", "assistant");
-  return <ClaimsPage clinic={clinic} />;
+// Content lives in src/server/views/app-claims.tsx and is cached on the client by TanStack Query.
+export default function Page() {
+  return <CachedPage bundle={AppClaimsView} view="app/claims" title={"Claims & receivables"} gate={() => requireClinicRole("owner", "assistant")} />;
 }
