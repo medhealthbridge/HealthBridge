@@ -8,7 +8,7 @@
 //   node scripts/seed-demo-clinic.mjs --emit-sql out.json               # no database: write the statements as a JSON array
 //                                                                       # (for a SQL runner that can't open a Postgres connection)
 //
-// Everything is tied to one clinic (subdomain "demo") and three users whose
+// Everything is tied to one clinic (subdomain "sunrise-demo") and three users whose
 // emails end in @demo.invalid (they can't receive mail). Adding is idempotent: if
 // the demo owner already exists nothing is changed. Set DEMO_PASSWORD to choose the
 // shared password, otherwise one is generated and printed once. Existing users'
@@ -21,7 +21,10 @@ import pg from "pg";
 const ADMIN_URL = process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL;
 import { hashPassword } from "better-auth/crypto";
 
-const SLUG = "demo";
+// Not "demo": that is a reserved subdomain (src/lib/constants.ts), so with live subdomains a clinic there could
+// never open its console. Earlier runs used it; LEGACY_SLUG is renamed on the next run.
+const SLUG = "sunrise-demo";
+const LEGACY_SLUG = "demo";
 const COMPANY = "Sunrise Dental (Demo)";
 const EMAILS = { owner: "owner@demo.invalid", assistant: "frontdesk@demo.invalid", practitioner: "dentist@demo.invalid" };
 const NAMES = { owner: "Dra. Maria Villanueva", assistant: "Kim Uy", practitioner: "Dr. Paolo Reyes" };
@@ -128,6 +131,8 @@ if (!EMIT) await pgClient.connect();
 try {
   await q("begin");
   await q("select pg_advisory_xact_lock(hashtext('seed-demo-clinic'))");
+  // A demo clinic from an earlier run still on the reserved subdomain moves to the new one.
+  await q("update clinics set subdomain = $1 where subdomain = $2", [SLUG, LEGACY_SLUG]);
 
   if (REMOVE) {
     const [{ id: clinicId } = {}] = (await q("select id from clinics where subdomain = $1", [SLUG])).rows;
@@ -149,8 +154,10 @@ try {
     console.log(clinicId ? "Removed the demo clinic and its 3 users." : "No demo clinic found.");
   } else {
     if ((await q('select 1 from "user" where email = $1', [EMAILS.owner])).rowCount) {
-      console.log("The demo clinic already exists. Nothing changed. Use --remove first to rebuild it.");
-      await q("rollback");
+      // Still apply the rename above (the only change an existing demo clinic gets).
+      const moved = (await q("select 1 from clinics where subdomain = $1", [SLUG])).rowCount;
+      await q("commit");
+      console.log(moved ? `The demo clinic already exists (subdomain ${SLUG}). Nothing else changed. Use --remove first to rebuild it.` : "The demo clinic already exists. Nothing changed. Use --remove first to rebuild it.");
       process.exit(0);
     }
     const password = process.env.DEMO_PASSWORD ?? generatePassword();
